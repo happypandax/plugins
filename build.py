@@ -5,6 +5,14 @@ import pathlib
 readme = """
 In this repository resides plugins for HappyPanda X
 
+# How to download
+
+I recommend these tools to download a single directory from this repo:
+- https://kinolien.github.io/gitzip/ -- *Paste the url to the plugin folder*
+- https://minhaskamal.github.io/DownGit/ -- *Paste the url to the plugin folder*
+- [Firefox Addon](https://addons.mozilla.org/en-US/firefox/addon/gitzip/)
+- [Chrome Extension](https://chrome.google.com/webstore/detail/gitzip-for-github/ffabmkklhbepgcgfonabamgnfafbdlkn)
+
 # How to install
 
 Please see [#Installing plugins](https://happypandax.github.io/usage.html#installing-plugins) in the documentation.
@@ -29,15 +37,17 @@ def main():
     for p in sorted(glob.glob(f"{plugins_dir}/**/hplugin.json")):
         with open(p, 'r', encoding="utf-8") as f:
             d = json.load(f)
-            dir_name = pathlib.Path(p).parent.name
+            plugin_dir = pathlib.Path(p).parent
+            dir_name = plugin_dir.name
+            plugin_dir = str(plugin_dir).replace('\\', '/')
             plugin_desc = d.get("description")
             plugin_ver = d.get("version")
 
             if plugin_desc and plugin_ver:
                 plugin_desc = plugin_desc.split('\n')[0]
                 if len(plugin_desc) > desc_max_length:
-                    plugin_desc = plugin_desc[:desc_max_length] + '...'
-                plugin_readme += f"- **{dir_name}** `{plugin_ver}` -- *{plugin_desc}*\n"
+                    plugin_desc = plugin_desc[:desc_max_length] + '…'
+                plugin_readme += f"- [**{dir_name}**]({plugin_dir}) `{plugin_ver}` ᠁ *{plugin_desc}*\n"
 
     txt = readme.format(plugin_readme)
 
