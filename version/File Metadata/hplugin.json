@@ -1,0 +1,13 @@
+{
+    "id": "e38e24e4-8ca8-420e-b52b-c75510097653",
+    "shortname": "file-metadata",
+    "name": "File Metadata",
+    "version": "0.1.0b",
+    "description": "Extracts and applies metadata from a file accompanying a gallery. Supports files produced from eze and hdoujin",
+    "author": "Twiddly",
+    "website": "https://github.com/happypandax/plugins",
+    "entry": "main.py",
+    "require": [
+        "happypandax >= 0.1.2"
+    ]
+}

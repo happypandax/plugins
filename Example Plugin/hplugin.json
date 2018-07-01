@@ -1,0 +1,15 @@
+{
+    "id": "xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxxx",
+    "shortname": "example",
+    "name": "My Example Plugin",
+    "version": "1.0.2b",
+    "description": "An example plugin that can do this example thing",
+    "author": "BestGirlEmilia",
+    "website": "github.com",
+    "entry": "main.py",
+    "test": "test.py",
+    "require": [
+        "happypandax > 0.0.0",
+        "other-plugin <= 0.0.0" 
+    ]
+}
