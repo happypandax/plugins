@@ -37,7 +37,7 @@ def main():
                 plugin_desc = plugin_desc.split('\n')[0]
                 if len(plugin_desc) > desc_max_length:
                     plugin_desc = plugin_desc[:desc_max_length] + '...'
-                plugin_readme += f"- {dir_name} `{plugin_ver}` -- {plugin_desc}\n"
+                plugin_readme += f"- **{dir_name}** `{plugin_ver}` -- *{plugin_desc}*\n"
 
     txt = readme.format(plugin_readme)
 

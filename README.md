@@ -11,5 +11,5 @@ Read the relevant section [#Be careful about plugins](https://happypandax.github
 
 # Plugins
 
-- File Metadata -- Extracts and applies metadata from a file accompanying a gallery. Supports files produced from eze and hdoujin
+- **File Metadata** `0.1.0b` -- *Extracts and applies metadata from a file accompanying a gallery. Supports files produced from eze and hdoujin*
 
