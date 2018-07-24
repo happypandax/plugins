@@ -6,11 +6,13 @@ File Metadata
 This plugin supports extracting metadata from files produced by:
 
 - [eze](https://dnsev-h.github.io/eze/)
-    > only supports JSON format and file must be named `info.json`
+    > - only supports JSON format and file must be named `info.json`
 - [HDoujin Downloader](https://doujindownloader.com/)
-    > all file versions are supported
-    > supports both JSON and TXT formats
-    > file must be named `info.json` or `info.txt`
+    > - all file versions are supported
+    > - supports both JSON and TXT formats
+    > - file must be named `info.json` or `info.txt`
+- [E-Hentai-Downloader](https://github.com/ccloli/E-Hentai-Downloader)
+    > - supports only the file named `info.txt`
 
 # Extending
 
