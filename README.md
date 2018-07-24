@@ -1,11 +1,12 @@
 
-In this repository resides plugins for HappyPanda X
+In this repository resides plugins for HappyPanda X. If you wish to write a plugin for HPX head over to
+[the docs](https://happypandax.github.io/plugin.html#plugins).
 
 # How to download
 
 I recommend these tools to download a single directory from this repo:
-- https://minhaskamal.github.io/DownGit/ -- *Paste the url to the plugin folder*
-- https://kinolien.github.io/gitzip/ -- *Paste the url to the plugin folder*
+- https://minhaskamal.github.io/DownGit/ -- *Paste the url to the plugin folder in this repo*
+- https://kinolien.github.io/gitzip/ -- *Paste the url to the plugin folder in this repo*
 - [Firefox Addon](https://addons.mozilla.org/en-US/firefox/addon/gitzip/)
 - [Chrome Extension](https://chrome.google.com/webstore/detail/gitzip-for-github/ffabmkklhbepgcgfonabamgnfafbdlkn)
 
@@ -19,5 +20,5 @@ Read the relevant section [#Be careful about plugins](https://happypandax.github
 
 # Plugins
 
-- [**File Metadata**](https://github.com/happypandax/plugins/tree/master/plugins/File%20Metadata) `0.1.0b` ᠁ *Extracts and applies metadata from a file accompanying a gallery. Supports files produced from eze and hdoujin*
+- [**File Metadata**](https://github.com/happypandax/plugins/tree/master/plugins/File%20Metadata) `0.2.0b` ᠁ *Extracts and applies metadata from a file accompanying a gallery. Supports files produced from eze and hdoujin*
 
