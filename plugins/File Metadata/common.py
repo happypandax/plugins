@@ -4,14 +4,15 @@ import json
 
 log = hpx.get_logger(__name__)
 
-class DataType(enum.Enum):
-    eze = 1
-    hdoujin = 2
+class DataType(enum.Flag):
+    eze = enum.auto()
+    hdoujin = enum.auto()
+    e_hentai_downloader = enum.auto()
 
 filetypes = ('.json', '.txt')
 filenames = {
-    "info.json": (DataType.eze, DataType.hdoujin),
-    "info.txt": (DataType.hdoujin,)
+    "info.json": DataType.eze | DataType.hdoujin,
+    "info.txt": DataType.hdoujin | DataType.e_hentai_downloader,
     }
 
 common_data = {
@@ -44,23 +45,27 @@ class Extractor:
     def file_to_dict(self, fs: hpx.command.CoreFS) -> dict:
         """
         """
-        d = {}
-        log.debug(f"File ext: {fs.ext}")
-        kw = {}
-        if not fs.inside_archive:
-            kw['encoding'] = 'utf-8'
-        if fs.ext.lower() == '.json':
-            with fs.open("r", **kw) as f:
-                d = json.load(f)
-        elif fs.ext.lower() == '.txt':
-            with fs.open("r", **kw) as f:
-                for line in f.readlines():
-                    l = line.strip()
-                    k, v = l.split(':', 1)
-                    if k.strip():
-                        d[k.strip()] = v.strip()
-        else:
-            raise NotImplementedError(f"{fs.ext} filetype not supported yet")
+        try:
+            d = {}
+            log.debug(f"File ext: {fs.ext}")
+            kw = {}
+            if not fs.inside_archive:
+                kw['encoding'] = 'utf-8'
+            if fs.ext.lower() == '.json':
+                with fs.open("r", **kw) as f:
+                    d = json.load(f)
+            elif fs.ext.lower() == '.txt':
+                with fs.open("r", **kw) as f:
+                    for line in f.readlines():
+                        l = line.strip()
+                        k, v = l.split(b':' if fs.inside_archive else ':', 1 )
+                        if k.strip():
+                            d[k.strip()] = v.strip()
+            else:
+                raise NotImplementedError(f"{fs.ext} filetype not supported yet")
+        except Exception:
+            log.warning("An error occured while trying to parse file into a dict")
+            raise ValueError
         return d
 
     def extract(self, filedata: dict) -> dict:
