@@ -11,29 +11,33 @@ options = {
 }
 
 def get_common_data(datatypes, fpath):
-    assert isinstance(datatypes, tuple)
+    assert isinstance(datatypes, common.DataType)
     d = {}
     fpath = hpx.command.CoreFS(fpath)
 
-    for datatype in datatypes:
-        md = {}
+    for datatype in common.DataType:
+        if datatype & datatypes:
+            log.info(f"Attempting with {datatype}")
+            md = {}
 
-        ex = common.extractors.get(datatype, None)
-        if ex:
-            fdata = ex.file_to_dict(fpath)
-            if fdata:
-                md.update(ex.extract(fdata))
-        if md:
-            d.update(md)
-            break
+            ex = common.extractors.get(datatype, None)
+            if ex:
+                try:
+                    fdata = ex.file_to_dict(fpath)
+                except ValueError:
+                    log.info(f"Skipping {datatype}")
+                    continue
+                if fdata:
+                    md.update(ex.extract(fdata))
+            if md:
+                d.update(md)
+                break
     return d
 
 language_model = hpx.command.GetModelClass("Language")
 title_model = hpx.command.GetModelClass("Title")
 artist_model = hpx.command.GetModelClass("Artist")
 circle_model = hpx.command.GetModelClass("Circle")
-category_model = hpx.command.GetModelClass("Category")
-artistname_model = hpx.command.GetModelClass("ArtistName")
 url_model = hpx.command.GetModelClass("Url")
 namespacetags_model = hpx.command.GetModelClass("NamespaceTags")
 
@@ -45,11 +49,13 @@ def apply_metadata(data, gallery):
 
     if isinstance(data['titles'], (list, tuple)):
         for t, l in data['titles']:
+            gtitle = None
             if t:
                 gtitle = title_model(name=t)
-                gallery.titles.append(gtitle)
             if t and l:
                 gtitle.language = language_model.as_unique(name=l)
+            if gtitle:
+                gallery.update("titles", gtitle)
         applied = True
 
     if isinstance(data['artists'], (list, tuple)):
@@ -57,22 +63,20 @@ def apply_metadata(data, gallery):
             if a:
                 gartist = artist_model.as_unique(name=a)
                 if not gartist in gallery.artists:
-                    gallery.artists.append(gartist)
+                    gallery.update("artists", gartist)
             if a and c:
                 for circlename in [x for x in c if x]:
                     gcircle = circle_model.as_unique(name=circlename)
                     if not gcircle in gartist.circles:
-                        gartist.circles.append(gcircle)
+                        gartist.update("circles", gcircle)
         applied = True
 
     if data['category']:
-        gcat = category_model.as_unique(name=data['category'])
-        gallery.category = gcat
+        gallery.update("category", name=data['category'])
         applied = True
     
     if data['language']:
-        glang = language_model.as_unique(name=data['language'])
-        gallery.language = glang
+        gallery.update("language", name=data['language'])
         applied = True
 
     if isinstance(data['tags'], (dict, list)):
@@ -89,20 +93,20 @@ def apply_metadata(data, gallery):
                 ns_tags.append(namespacetags_model.as_unique(ns=ns, tag=t))
         
         for nstag in ns_tags:
-            if not nstag in gallery.tags:
+            if nstag not in gallery.tags:
                 gallery.tags.append(nstag)
         applied = True
 
     if isinstance(data['pub_date'], (datetime.datetime, arrow.Arrow)):
         pub_date = data['pub_date']
-        if isinstance(pub_date, datetime.datetime):
-            pub_date = arrow.Arrow.fromdatetime(pub_date)
-        gallery.pub_date = pub_date
+        gallery.update("pub_date", pub_date)
         applied = True
 
     if isinstance(data['urls'], (list, tuple)):
+        urls = []
         for u in data['urls']:
-            gallery.urls.append(url_model(name=u))
+            urls.append(url_model(name=u))
+        gallery.update("urls", urls)
         applied = True
 
     return applied
