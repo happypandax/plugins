@@ -1,0 +1,15 @@
+{
+    "id": "1572a650-5352-4d62-802f-8dfb983f9231",
+    "shortname": "ehentai-metadata",
+    "name": "EHentai Metadata",
+    "version": "0.0.0",
+    "description": "A plugin that can fetch metadata from E-Hentai & ExHentai",
+    "author": "Twiddly",
+    "website": "www.pewpew.moe",
+    "entry": "main.py",
+    "test": "test.py",
+    "require": [
+        "happypandax > 0.2.0",
+        "ehentai-login"
+    ]
+}
