@@ -2,10 +2,10 @@
     "id": "d9b1d111-7250-4083-9efb-356fabbeada7",
     "shortname": "ehentai-login",
     "name": "EHentai Login",
-    "version": "0.0.0",
+    "version": "0.1.0b",
     "description": "A plugin that can login to E-Hentai & ExHentai",
     "author": "Twiddly",
-    "website": "www.pewpew.moe",
+    "website": "https://github.com/happypandax/plugins/tree/master/plugins/EHentai%20Login",
     "entry": "main.py",
     "test": "test.py",
     "require": [

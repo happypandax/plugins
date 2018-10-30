@@ -147,7 +147,7 @@ def query(item, url, options, login_site=urls['eh']):
                 data={
                     'gallery': [g_id, g_token],
                     'gallery_url': u,
-                    'apply_url': True,
+                    'apply_url': plugin_config.get('add_gallery_url', True),
                     }))
     return tuple(mdata)
 
