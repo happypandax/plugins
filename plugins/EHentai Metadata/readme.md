@@ -26,7 +26,7 @@ Name | Default | Description
 `expunged_galleries` | `false` | enable expunged galleries in results
 `remove_namespaces` | `true` | remove superfluous namespaces like 'artist', 'language' and 'group' because they are handled specially in HPX
 `gallery_results_limit` | `10` | maximum amount of galleries to return
-`blacklist_tags` | `[]` | tags to ignore when updating tags
+`blacklist_tags` | `[]` | tags to ignore when updating tags, a list of `namespace:tag` strings
 `add_gallery_url` | `true` | add ehentai url to gallery
 
 # Changelog
