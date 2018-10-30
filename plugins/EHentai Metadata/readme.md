@@ -29,6 +29,10 @@ Name | Default | Description
 `blacklist_tags` | `[]` | tags to ignore when updating tags, a list of `namespace:tag` strings
 `add_gallery_url` | `true` | add ehentai url to gallery
 
+## Things yet to be implemented
+
+- File similarity search
+
 # Changelog
 
 - `0.1.0b`
