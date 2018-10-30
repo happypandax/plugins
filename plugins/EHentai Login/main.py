@@ -18,6 +18,11 @@ default_delay = 4
 
 HEADERS = {'user-agent':"Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0"}
 
+match_url_prefix = r"^(http\:\/\/|https\:\/\/)?(www\.)?" # http:// or https:// + www.
+match_url_end = r"\/?$"
+
+url_regex =  match_url_prefix + r"((exhentai|(g\.)?e-hentai)\.org)" + match_url_end
+
 MAIN_URLS = {
     'eh': "https://e-hentai.org",
     'ex': "https://exhentai.org"
@@ -61,13 +66,13 @@ def login_info():
     return hpx.command.LoginInfo(
         identifier = "ehentai",
         name = "EHentai",
-        parser = "",
+        parser = url_regex,
         sites = ("www.e-hentai.org", "www.exhentai.org"),
-        description = "Login to E-Hentai & ExHentai",
+        description = "Login to E-Hentai & EXHentai",
         inputs = (
             {'name': 'IPB Member ID', 'type': str, 'mask': False},
             {'name': 'IPB Pass Hash', 'type': str, 'mask': True},
-            {'name': 'ExHentai', 'type': bool}
+            {'name': 'EXHentai', 'type': bool}
         )
     )
 
@@ -109,13 +114,14 @@ def login(userpass, options, capture="ehentai"):
             bad_access, msg = check_access(r)
             status_text = msg
             if not bad_access:
-                if userpass.get("ExHentai", True):
+                if userpass.get("EXHentai", True):
                     # check exhentai
+                    req_props.session = r.session
                     r = req.request(URLS['ex'], req_props)
                     if r.ok:
                         bad_access, msg = check_access(r, ex=True)
                     else:
-                        msg = "Could not access ExHentai"
+                        msg = "Could not access EXHentai"
 
                 response = r
 
@@ -140,6 +146,10 @@ def logged_in(options, capture="ehentai"):
         return True
     return False
 
+@hpx.attach("Login.response")
+def response_(options, capture="ehentai"):
+    return response
+
 @hpx.attach("Login.current_user")
 def current_user(options, capture="ehentai"):
     return current_user_name
@@ -150,7 +160,7 @@ def check_access(r, ex=False):
     content_type = r.headers['content-type']
     text = r.text
     if 'image/gif' in content_type:
-        msg = "No access to ExHentai"
+        msg = "No access to EXHentai"
     elif 'text/html' and 'Your IP address has been' in text:
         msg = text
         bad_access = True
@@ -162,6 +172,8 @@ def check_access(r, ex=False):
         elif soup.find("form"): # login page
             bad_access = True
             msg = "Wrong credentials!"
+    if msg:
+        log.info(f"MSG: {msg}")
     return bad_access, msg
 
 def save_user_dict():

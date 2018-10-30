@@ -9,7 +9,7 @@
     "entry": "main.py",
     "test": "test.py",
     "require": [
-        "happypandax > 0.2.0",
+        "happypandax >= 0.5.0",
         "ehentai-login"
     ]
 }
