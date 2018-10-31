@@ -37,5 +37,7 @@ Name | Default | Description
 
 # Changelog
 
+- `0.2.0b`
+    - added `preferred_language` option
 - `0.1.0b`
     - first version
