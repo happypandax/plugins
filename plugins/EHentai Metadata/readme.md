@@ -28,6 +28,8 @@ Name | Default | Description
 `gallery_results_limit` | `10` | maximum amount of galleries to return
 `blacklist_tags` | `[]` | tags to ignore when updating tags, a list of `namespace:tag` strings
 `add_gallery_url` | `true` | add ehentai url to gallery
+`preferred_language` | `english` | preferred gallery langauge (in gallery title) to extract from if multiple galleries were found, set empty string for default
+
 
 ## Things yet to be implemented
 
