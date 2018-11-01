@@ -14,7 +14,7 @@ user_dict = None
 
 save_file = os.path.join(hpx.constants.current_dir, '.info')
 
-default_delay = 4
+default_delay = 7
 
 HEADERS = {'user-agent':"Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0"}
 
@@ -37,7 +37,7 @@ URLS.update({
 def inited():
     # set default delay values if not set
     delays = hpx.get_setting("network", "delays", {})
-    for u in MAIN_URLS.values():
+    for u in (MAIN_URLS['ex'], MAIN_URLS['eh'])):
         if u not in delays:
             log.info(f"Setting delay on {u} requests to {default_delay}")
             delays[u] = default_delay
