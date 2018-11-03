@@ -18,5 +18,8 @@ To find your **IPB Member ID** and **IPB Pass Hash**, follow these steps (should
 
 # Changelog
 
+- `0.2.0b`
+    - increase default delay limit on EH requests to `9` from `4` secs, this value can be tweaked in `network.delays` inside your`config.yaml`
+
 - `0.1.0b`
     - first version
