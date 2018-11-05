@@ -40,6 +40,7 @@ plugin_config = {
     'gallery_results_limit': 10, # maximum amount of galleries to return
     'blacklist_tags': [], # tags to ignore when updating tags
     'add_gallery_url': True, # add ehentai url to gallery
+    'preferred_language': "english", # preferred gallery langauge (in gallery title) to extract from if multiple galleries were found, set empty string for default
 }
 
 @hpx.subscribe("init")
@@ -114,11 +115,11 @@ def apply_ex(datatuple, item, options, capture="exhentai"):
 def query(item, url, options, login_site=urls['eh']):
     "Looks up on ehentai for matching item"
     mdata = []
-    gurls = []
+    gurls = [] # tuple of (title, url)
     # url was provided
     if url:
         log.info(f"url provided: {url} for {item}")
-        gurls.append(url)
+        gurls.append((url, url))
     else: # manually search for id
         log.info(f"url not provided for {item}")
         ex_login = hpx.command.GetLoginStatus(login_site) if "exhentai" in login_site else False
@@ -149,8 +150,23 @@ def query(item, url, options, login_site=urls['eh']):
                 pass
 
     log.info(f"found {len(gurls)} urls for item: {item}")
+
+    # list is sorted by date added so we reverse it
+    gurls.reverse()
+
     log.debug(f"{gurls}")
-    for u in gurls:
+    final_gurls = []
+    pref_lang = plugin_config.get('preferred_language')
+    if pref_lang:
+        for t in gurls:
+            if pref_lang.lower() in t[0].lower():
+                final_gurls.insert(0, t)
+                continue
+            final_gurls.append(t)
+    else:
+        final_gurls = gurls
+
+    for t, u in final_gurls:
         g_id, g_token = parse_url(u)
         if g_id and g_token:
             mdata.append(hpx.command.MetadataData(
@@ -162,7 +178,7 @@ def query(item, url, options, login_site=urls['eh']):
     return tuple(mdata)
 
 def title_search(title, ex=True, session=None):
-    "Searches on ehentai for galleries with given title, returns a list of matching gallery urls"
+    "Searches on ehentai for galleries with given title, returns a list of (title, matching gallery urls)"
     if plugin_config.get("expunged_galleries"):
         eh_url = urls['title_search_exp']
     else:
@@ -176,7 +192,7 @@ def title_search(title, ex=True, session=None):
     return eh_page_results(f_eh_url, session=session)
 
 def eh_page_results(eh_page_url, limit=None, session=None):
-    "Opens eh page, parses for results, and then returns found urls"
+    "Opens eh page, parses for results, and then returns list of (title, url)"
     found_urls = []
     if limit is None:
         limit = plugin_config.get("gallery_results_limit")
@@ -199,7 +215,8 @@ def eh_page_results(eh_page_url, limit=None, session=None):
     else:
         results = soup.findAll("div", class_="it5", limit=limit)
     # str(x.a.string)
-    found_urls = [x.a['href'] for x in results]
+    found_urls = [(str(x.a.string), x.a['href']) for x in results] # title, url
+
     if not found_urls:
         log.debug(f"HTML: {r.text}")
     return found_urls
@@ -264,6 +281,8 @@ def filter_metadata(gdata, item, urls_to_apply=None):
         item.titles = []
         item.artists = []
         item.tags = []
+        # flush is required so items are removed from the db
+        hpx.command.GetSession().flush()
 
     if replace_metadata:
         mdata['titles'] = []
@@ -288,8 +307,8 @@ def filter_metadata(gdata, item, urls_to_apply=None):
     elif not item.pub_date:
         mdata['pub_date'] = arrow.Arrow.fromtimestamp(gdata['posted'])
 
-    lang = "english"
-    if item.language:
+    lang = "japanese" # def lang
+    if not replace_metadata and item.language:
         lang = item.language.name
 
     artists = []

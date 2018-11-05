@@ -28,6 +28,8 @@ Name | Default | Description
 `gallery_results_limit` | `10` | maximum amount of galleries to return
 `blacklist_tags` | `[]` | tags to ignore when updating tags, a list of `namespace:tag` strings
 `add_gallery_url` | `true` | add ehentai url to gallery
+`preferred_language` | `english` | preferred gallery langauge (in gallery title) to extract from if multiple galleries were found, set empty string for default
+
 
 ## Things yet to be implemented
 
@@ -35,8 +37,11 @@ Name | Default | Description
 
 # Changelog
 
-- `0.2.0b`
+- `0.3.0b`
     - add a default delay on `https://api.e-hentai.org/` requests, this value can be tweaked in `network.delays` inside your`config.yaml`
 
+- `0.2.0b`
+    - added `preferred_language` option
+    
 - `0.1.0b`
     - first version
