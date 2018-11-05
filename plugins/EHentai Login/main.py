@@ -14,7 +14,7 @@ user_dict = None
 
 save_file = os.path.join(hpx.constants.current_dir, '.info')
 
-default_delay = 9
+default_delay = 6
 
 HEADERS = {'user-agent':"Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0"}
 

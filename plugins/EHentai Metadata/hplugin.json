@@ -2,7 +2,7 @@
     "id": "1572a650-5352-4d62-802f-8dfb983f9231",
     "shortname": "ehentai-metadata",
     "name": "EHentai Metadata",
-    "version": "0.1.0b",
+    "version": "0.2.0b",
     "description": "A plugin that can fetch metadata from E-Hentai & ExHentai",
     "author": "Twiddly",
     "website": "https://github.com/happypandax/plugins/tree/master/plugins/EHentai%20Metadata",
