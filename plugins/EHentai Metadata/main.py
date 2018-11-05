@@ -16,6 +16,8 @@ log = hpx.get_logger("main")
 match_url_prefix = r"^(http\:\/\/|https\:\/\/)?(www\.)?" # http:// or https:// + www.
 match_url_end = r"\/?$"
 
+default_delay = 6
+
 urls_regex = {
     'eh_gallery': match_url_prefix + r"((?<!g\.)(e-hentai)\.org\/g\/[0-9]+\/[a-z0-9]+)" + match_url_end,
     'ex_gallery': match_url_prefix + r"((exhentai)\.org\/g\/[0-9]+\/[a-z0-9]+)" + match_url_end,
@@ -44,6 +46,14 @@ plugin_config = {
 @hpx.subscribe("init")
 def inited():
     plugin_config.update(hpx.get_plugin_config())
+
+    # set default delay values if not set
+    delays = hpx.get_setting("network", "delays", {})
+    for u in (urls['ex'], urls['eh'], "https://api.e-hentai.org"):
+        if u not in delays:
+            log.info(f"Setting delay on {u} requests to {default_delay}")
+            delays[u] = default_delay
+            hpx.update_setting("network", "delays", delays)
 
 @hpx.subscribe("disable")
 def disabled():
