@@ -5,11 +5,17 @@ import json
 log = hpx.get_logger(__name__)
 
 class DataType(enum.Flag):
+    """
+    The available extractors.
+    Add your new extractor here
+    """
     eze = enum.auto()
     hdoujin = enum.auto()
     e_hentai_downloader = enum.auto()
 
+# The filetypes to look for, no duplicates, only add if necessary
 filetypes = ('.json', '.txt')
+# Which filetype belongs to which extractor, use inclusive OR '|' to combine multiple extractors
 filenames = {
     "info.json": DataType.eze | DataType.hdoujin,
     "info.txt": DataType.hdoujin | DataType.e_hentai_downloader,
@@ -18,11 +24,16 @@ filenames = {
 common_data = {
     'titles': None, # [(title, language),...]
     'artists': None, # [(artist, (circle, circle, ..)),...]
+    'parodies': None, # [parody, ...]
     'category': None,
     'tags': None, # [tag, tag, tag, ..] or {ns:[tag, tag, tag, ...]}
-    'pub_date': None, # DateTime object
+    'pub_date': None, # DateTime object or Arrow object
     'language': None,
     'urls': None # [url, ...]
+}
+
+plugin_config = {
+    'characters_namespace': 'character', # hdoujin, which namespace to put the values in the CHARACTERS field in
 }
 
 extractors = {}
@@ -40,10 +51,26 @@ def register_extractor(cls, type):
 
 class Extractor:
     """
+    Base extractor
     """
 
     def file_to_dict(self, fs: hpx.command.CoreFS) -> dict:
         """
+        A subclass can choose to override or extend this method.
+        Should return a dict with data from the file which will be passed to the extract method.
+
+        Below is convenience code to read and convert a file into a dict.
+        Supports json and txt files.
+        If file is a txt, will try to parse files like this:
+            Field A: value 1
+            Field B: value 2
+            ->
+            {
+                'Field A': 'value 1',
+                'Field B': 'value 2',
+            }
+        otherwise the txt file is not supported and a ValueError will be raised.
+        NotImplementedError will be raised if file is neither json or txt file.
         """
         try:
             d = {}
@@ -63,12 +90,16 @@ class Extractor:
                             d[k.strip()] = v.strip()
             else:
                 raise NotImplementedError(f"{fs.ext} filetype not supported yet")
-        except Exception:
+        except Exception: # Bad, I know, but too lazy
             log.warning("An error occured while trying to parse file into a dict")
             raise ValueError
         return d
 
     def extract(self, filedata: dict) -> dict:
         """
+        A subclass must implement this method.
+        Should populate a dict that looks like common_data (see above) and return it
+
+        filedata parameter is the dict created in the file_to_dict method
         """
         raise NotImplementedError
