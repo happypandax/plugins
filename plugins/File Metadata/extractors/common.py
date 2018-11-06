@@ -1,6 +1,7 @@
 import __hpx__ as hpx
 import enum
 import json
+import typing
 
 log = hpx.get_logger(__name__)
 
@@ -54,10 +55,12 @@ class Extractor:
     Base extractor
     """
 
-    def file_to_dict(self, fs: hpx.command.CoreFS) -> dict:
+    def file_to_dict(self, fs: hpx.command.CoreFS) -> typing.Union[dict, None]:
         """
         A subclass can choose to override or extend this method.
         Should return a dict with data from the file which will be passed to the extract method.
+        If the file is not supported or should be skipped, return None.
+        The parameter fs is the file in question.
 
         Below is convenience code to read and convert a file into a dict.
         Supports json and txt files.
