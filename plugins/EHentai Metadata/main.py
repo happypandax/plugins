@@ -380,7 +380,7 @@ circle_model = hpx.command.GetModelClass("Circle")
 url_model = hpx.command.GetModelClass("Url")
 namespacetags_model = hpx.command.GetModelClass("NamespaceTags")
 
-def apply_metadata(data, gallery, replace=False):
+def apply_metadata(data, gallery):
     """
     data = {
         'titles': None, # [(title, language),...]
@@ -388,7 +388,7 @@ def apply_metadata(data, gallery, replace=False):
         'parodies': None, # [parody, ...]
         'category': None,
         'tags': None, # [tag, tag, tag, ..] or {ns:[tag, tag, tag, ...]}
-        'pub_date': None, # DateTime object
+        'pub_date': None, # DateTime object or Arrow object
         'language': None,
         'urls': None # [url, ...]
     }
