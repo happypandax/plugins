@@ -4,10 +4,9 @@ import pathlib
 from urllib.parse import quote
 
 readme = """
-In this repository resides plugins for HappyPanda X. If you wish to write a plugin for HPX head over to
-[the docs](https://happypandax.github.io/plugin.html#plugins).
+##### In this repository resides plugins for HappyPanda X. If you wish to write a plugin for HPX head over to [the docs](https://happypandax.github.io/plugin.html#plugins).
 
-# How to download
+### How to download
 
 I recommend these tools to download a single directory from this repo:
 - https://minhaskamal.github.io/DownGit/ -- *Paste the url to the plugin folder in this repo*
@@ -15,17 +14,18 @@ I recommend these tools to download a single directory from this repo:
 - [Firefox Addon](https://addons.mozilla.org/en-US/firefox/addon/gitzip/)
 - [Chrome Extension](https://chrome.google.com/webstore/detail/gitzip-for-github/ffabmkklhbepgcgfonabamgnfafbdlkn)
 
-# How to install
+### How to install
 
 Please see [#Installing plugins](https://happypandax.github.io/usage.html#installing-plugins) in the documentation.
 
 # Be careful about plugins
 
-Read the relevant section [#Be careful about plugins](https://happypandax.github.io/usage.html#be-careful-about-plugins) in documentation
+Read the relevant section [#Be careful about plugins](https://happypandax.github.io/usage.html#be-careful-about-plugins) in the documentation
 
 # Plugins
 
 {}
+
 """
 
 plugins_dir = "plugins"
@@ -36,7 +36,7 @@ repo_name = "plugins"
 
 def main():
     print("Building...")
-    plugin_readme = ""
+    plugin_readme = "Name | Version | Description\n--- | --- | ---\n"
 
     for p in sorted(glob.glob(f"{plugins_dir}/**/hplugin.json")):
         with open(p, 'r', encoding="utf-8") as f:
@@ -53,7 +53,7 @@ def main():
                 plugin_desc = plugin_desc.split('\n')[0]
                 if len(plugin_desc) > desc_max_length:
                     plugin_desc = plugin_desc[:desc_max_length] + '…'
-                plugin_readme += f"- [**{dir_name}**]({gh_url}) `{plugin_ver}` ᠁ *{plugin_desc}*\n"
+                plugin_readme += f"[**{dir_name}**]({gh_url}) | `{plugin_ver}` | *{plugin_desc}*\n"
 
     txt = readme.format(plugin_readme)
 
