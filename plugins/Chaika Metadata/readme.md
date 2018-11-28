@@ -1,4 +1,4 @@
-EHentai Metadata
+Chaika Metadata
 ----------------------------
 
 > This plugin fetches metadata from Panda.Chaika
