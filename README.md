@@ -23,7 +23,7 @@ Name | Version | Description
 --- | --- | ---
 [**Chaika Metadata**](https://github.com/happypandax/plugins/tree/master/plugins/Chaika%20Metadata) | `0.1.0b` | *A plugin that can fetch metadata from Panda.Chaika*
 [**EHentai Login**](https://github.com/happypandax/plugins/tree/master/plugins/EHentai%20Login) | `0.2.0b` | *A plugin that can login to E-Hentai & ExHentai*
-[**EHentai Metadata**](https://github.com/happypandax/plugins/tree/master/plugins/EHentai%20Metadata) | `0.3.0b` | *A plugin that can fetch metadata from E-Hentai & ExHentai*
+[**EHentai Metadata**](https://github.com/happypandax/plugins/tree/master/plugins/EHentai%20Metadata) | `0.4.0b` | *A plugin that can fetch metadata from E-Hentai & ExHentai*
 [**File Metadata**](https://github.com/happypandax/plugins/tree/master/plugins/File%20Metadata) | `0.3.0b` | *Extracts and applies metadata from a file accompanying a gallery. Supports files produced from eze, e-hentai-downloader and hdoujin*
 
 
