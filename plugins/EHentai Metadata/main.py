@@ -206,14 +206,19 @@ def eh_page_results(eh_page_url, limit=None, session=None):
         log.debug(f"COOKIES: {session.cookies}")
     r = hpx.command.SingleGETRequest().request(eh_page_url, req_props)
     soup = BeautifulSoup(r.text, "html.parser")
-    thumb_view = False
-    dmi_div = soup.find("div", id="dmi")
-    if dmi_div and dmi_div.a and "list" in str(dmi_div.a.string).lower():
-        thumb_view = True
-    if thumb_view:
-        results = soup.findAll("div", class_="id2", limit=limit)
-    else:
-        results = soup.findAll("div", class_="it5", limit=limit)
+    list_style = "compact"
+    dmi_div = soup.find("div", id="dms")
+    if dmi_div:
+        list_style = dmi_div.find("option", selected=True).string.lower()
+    results = []
+    if list_style == "compact":
+        results = soup.findAll("td", class_="gl3c glname", limit=limit)
+    elif list_style == "minimal":
+        results = soup.findAll("td", class_="gl3m glname", limit=limit)
+    elif list_style == "extended":
+        results = soup.findAll("div", class_="gl4e glname", limit=limit)
+    elif list_style == "thumbnail":
+        results = soup.findAll("div", class_="gl4t glname", limit=limit)
     # str(x.a.string)
     found_urls = [(str(x.a.string), x.a['href']) for x in results] # title, url
 
