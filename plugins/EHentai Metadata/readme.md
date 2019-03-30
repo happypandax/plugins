@@ -37,6 +37,9 @@ Name | Default | Description
 
 # Changelog
 
+- `0.4.0b`
+    - updated for new EH website design changes
+
 - `0.3.0b`
     - add a default delay on `https://api.e-hentai.org/` requests, this value can be tweaked in `network.delays` inside your`config.yaml`
 
