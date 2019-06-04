@@ -33,6 +33,9 @@ Name | Default | Description
 - File similarity search
 
 # Changelog
+
+- `1.0.0`
+    - Updated to reflect new changes in HPX v0.10.0
     
 - `0.1.0b`
     - first version

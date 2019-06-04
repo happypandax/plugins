@@ -2,13 +2,14 @@
     "id": "55747a41-789b-43dd-964a-2a6cb1761ff4",
     "shortname": "chaika-metadata",
     "name": "Chaika Metadata",
-    "version": "0.1.0b",
+    "version": "1.0.0",
     "description": "A plugin that can fetch metadata from Panda.Chaika",
     "author": "Twiddly",
+    "update_url": "https://github.com/happypandax/plugins/tree/master/plugins/Chaika%20Metadata",
     "website": "https://github.com/happypandax/plugins/tree/master/plugins/Chaika%20Metadata",
     "entry": "main.py",
     "test": "test.py",
     "require": [
-        "happypandax >= 0.6.1"
+        "happypandax >= 0.10.0"
     ]
 }
