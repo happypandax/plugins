@@ -21,6 +21,7 @@ logs/
 .idea/**/dynamic.xml
 .idea/**/uiDesigner.xml
 .idea/**/dbnavigator.xml
+*.info
 
 # Gradle
 .idea/**/gradle.xml
