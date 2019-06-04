@@ -1,11 +1,13 @@
 # main.py
-from bs4 import BeautifulSoup
 import __hpx__ as hpx
-import gevent
 import pickle
 import os
 
+from bs4 import BeautifulSoup
+
 log = hpx.get_logger("main")
+
+
 
 current_user_name = ""
 status_text = ""
@@ -14,7 +16,7 @@ user_dict = None
 
 save_file = os.path.join(hpx.constants.current_dir, '.info')
 
-default_delay = 6
+default_delay = 7
 
 HEADERS = {'user-agent':"Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0"}
 
@@ -68,16 +70,11 @@ def login_info():
         name = "EHentai",
         parser = url_regex,
         sites = ("www.e-hentai.org", "www.exhentai.org"),
-        description = "Login to E-Hentai & EXHentai",
-        inputs = (
-            {'name': 'IPB Member ID', 'type': str, 'mask': False},
-            {'name': 'IPB Pass Hash', 'type': str, 'mask': True},
-            {'name': 'EXHentai', 'type': bool}
-        )
+        description = "Login to E-Hentai & ExHentai",
     )
 
-@hpx.attach("Login.login")
-def login(userpass, options, capture="ehentai"):
+@hpx.attach("Login.login", trigger="ehentai")
+def login(userpass, options):
     global current_user_name
     global status_text
     global response
@@ -87,15 +84,15 @@ def login(userpass, options, capture="ehentai"):
     response = None
     current_user_name = ""
 
-    ipb_member = userpass.get('IPB Member ID')
-    ipb_pass = userpass.get('IPB Pass Hash')
+    ipb_member = userpass.get('ipb_member_id', "")
+    ipb_pass = userpass.get('ipb_pass_hash', "")
     if ipb_member and ipb_pass:
 
         cookies = {}
         # get user input
         cookies.update({
-            'ipb_member_id': userpass.get('IPB Member ID'),
-            'ipb_pass_hash': userpass.get('IPB Pass Hash'),
+            'ipb_member_id': ipb_member,
+            'ipb_pass_hash': ipb_pass,
         })
 
         # prepare request
@@ -114,18 +111,18 @@ def login(userpass, options, capture="ehentai"):
             bad_access, msg = check_access(r)
             status_text = msg
             if not bad_access:
-                if userpass.get("EXHentai", True):
+                if userpass.get("exhentai", True):
                     # check exhentai
                     req_props.session = r.session
                     r = req.request(URLS['ex'], req_props)
                     if r.ok:
-                        bad_access, msg = check_access(r, ex=True)
+                        bad_access, status_text = check_access(r, ex=True)
                     else:
-                        msg = "Could not access EXHentai"
+                        status_text = "Could not access ExHentai"
 
                 response = r
 
-                current_user_name = userpass.get('IPB Member ID', "")
+                current_user_name = ipb_member
                 save_user_dict()
             
         else:
@@ -136,22 +133,22 @@ def login(userpass, options, capture="ehentai"):
 
     return response
 
-@hpx.attach("Login.status")
-def status(options, capture="ehentai"):
+@hpx.attach("Login.status", trigger="ehentai")
+def status(options):
     return status_text
 
-@hpx.attach("Login.logged_in")
-def logged_in(options, capture="ehentai"):
+@hpx.attach("Login.logged_in", trigger="ehentai")
+def logged_in(options):
     if response:
         return True
     return False
 
-@hpx.attach("Login.response")
-def response_(options, capture="ehentai"):
+@hpx.attach("Login.response", trigger="ehentai")
+def response_(options):
     return response
 
-@hpx.attach("Login.current_user")
-def current_user(options, capture="ehentai"):
+@hpx.attach("Login.current_user", trigger="ehentai")
+def current_user(options):
     return current_user_name
 
 def check_access(r, ex=False):
@@ -160,7 +157,7 @@ def check_access(r, ex=False):
     content_type = r.headers['content-type']
     text = r.text
     if 'image/gif' in content_type:
-        msg = "No access to EXHentai"
+        msg = "No access to ExHentai"
     elif 'text/html' and 'Your IP address has been' in text:
         msg = text
         bad_access = True

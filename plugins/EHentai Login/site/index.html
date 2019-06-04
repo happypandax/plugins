@@ -1,0 +1,54 @@
+{% extends __default__ %}
+
+{% block include_javascript %}
+<script src="script.js"></script>
+{% endblock %}
+
+{% block title %}
+EHentai Metadata Plugin
+{% endblock %}
+
+{% block before_content_form %}
+<p>Toggle the <b>ExHentai</b> option before logging in to also check for ExHentai access.</p>
+<p>The user has access to both E-Hentai and ExHentai if no message is displayed on a succesful log-in. Else the message No access to ExHentai will be displayed.</p>
+<div>
+    <p>To find your <b>IPB Member ID</b> and <b>IPB Pass Hash</b>, follow these steps (should work on all browsers):</p>
+    <ol>
+        <li>Navigate to e-hentai.org (needs to be logged in) or exhentai.org</li>
+        <li>Right click on page => Inpect element</li>
+        <li>Go on Console tab</li>
+        <li>Write: document.cookie</li>
+        <li>A line of values should appear that correspond to active cookies</li>
+        <li>Look for the ipb_member_id and ipb_pass_hash values</li>
+    </ol>
+</div>
+{% endblock %}
+
+{% block outer_content_form %}
+<form class="ui form" onsubmit="return on_login(event)">
+    <div class="ui success message">
+        <p>Logged In</p>
+    </div>
+    <div class="ui warning message">
+        <p>No access to ExHentai</p>
+    </div>
+    <div class="ui error message">
+            <p id="error-msg">Failed to log in</p>
+    </div>
+    <div class="field">
+        <label>IPB Member ID</label>
+        <input type="text" name="ipb_member_id" placeholder="IPB Member ID">
+    </div>
+    <div class="field">
+        <label>IPB Pass Hash</label>
+        <input type="password" name="ipb_pass_hash" placeholder="IPB Pass Hash">
+    </div>
+    <div class="field">
+        <div class="ui toggle checkbox">
+            <input type="checkbox" name="exhentai" checked>
+            <label>ExHentai</label>
+        </div>
+    </div>
+    <button class="ui button" type="submit">Login</button>
+</form>
+{% endblock %}

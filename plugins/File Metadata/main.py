@@ -35,15 +35,21 @@ def get_common_data(datatypes, fpath):
                 break
     return d
 
-language_model = hpx.command.GetModelClass("Language")
-title_model = hpx.command.GetModelClass("Title")
-artist_model = hpx.command.GetModelClass("Artist")
-parody_model = hpx.command.GetModelClass("Parody")
-circle_model = hpx.command.GetModelClass("Circle")
-url_model = hpx.command.GetModelClass("Url")
-namespacetags_model = hpx.command.GetModelClass("NamespaceTags")
+GalleryData = hpx.command.GalleryData
+LanguageData = hpx.command.LanguageData
+TitleData = hpx.command.TitleData
+ArtistData = hpx.command.ArtistData
+ArtistNameData = hpx.command.ArtistNameData
+ParodyData = hpx.command.ParodyData
+ParodyNameData = hpx.command.ParodyNameData
+CircleData = hpx.command.CircleData
+CategoryData = hpx.command.CategoryData
+UrlData = hpx.command.UrlData
+NamespaceTagData= hpx.command.NamespaceTagData
+TagData= hpx.command.TagData
+NamespaceData = hpx.command.NamespaceData
 
-def apply_metadata(data, gallery):
+def apply_metadata(data, gallery, options={}):
     """
     data = {
         'titles': None, # [(title, language),...]
@@ -57,61 +63,66 @@ def apply_metadata(data, gallery):
     }
     """
 
-    applied = False
-
     log.debug(f"data: {data}")
 
-    if isinstance(data.get('titles'), (list, tuple)):
+    gdata = GalleryData()
+
+    if isinstance(data.get('titles'), (list, tuple, set)):
+        gtitles = []
         for t, l in data['titles']:
             gtitle = None
             if t:
                 t = html.unescape(t)
-                gtitle = title_model(name=t)
+                gtitle = TitleData(name=t)
             if t and l:
-                gtitle.language = language_model.as_unique(name=l)
+                gtitle.language = LanguageData(name=l)
             if gtitle:
-                gallery.update("titles", gtitle)
-        log.debug("applied titles")
-        applied = True
+                gtitles.append(gtitle)
 
-    if isinstance(data.get('artists'), (list, tuple)):
+        if gtitles:
+            gdata.titles = gtitles
+            log.debug("applied titles")
+
+    if isinstance(data.get('artists'), (list, tuple, set)):
+        gartists = []
         for a, c in data['artists']:
             if a:
-                gartist = artist_model.as_unique(name=common.capitalize_text(a))
-                if not gartist in gallery.artists:
-                    gallery.update("artists", gartist)
-            if a and c:
-                for circlename in [x for x in c if x]:
-                    gcircle = circle_model.as_unique(name=common.capitalize_text(circlename))
-                    if not gcircle in gartist.circles:
-                        gartist.update("circles", gcircle)
-        log.debug("applied artists")
-        applied = True
+                gartist = ArtistData(names=[ArtistNameData(name=capitalize_text(a))])
+                gartists.append(gartist)
 
-    if isinstance(data.get('parodies'), (list, tuple)):
+                if c:
+                    gcircles = []
+                    for circlename in [x for x in c if x]:
+                        gcircles.append(CircleData(name=capitalize_text(circlename)))
+                    gartist.circles = gcircles
+
+        if gartists:
+            gdata.artists = gartists
+            log.debug("applied artists")
+
+    if isinstance(data.get('parodies'), (list, tuple, set)):
+        gparodies = []
         for p in data['parodies']:
             if p:
-                gparody = parody_model.as_unique(name=common.capitalize_text(p))
-                if not gparody in gallery.parodies:
-                    gallery.update("parodies", gparody)
+                gparody = ParodyData(names=[ParodyNameData(name=capitalize_text(p))])
+                gparodies.append(gparody)
 
-        log.debug("applied parodies")
-        applied = True
+        if gparodies:
+            gdata.parodies = gparodies
+            log.debug("applied parodies")
 
     if data.get('category'):
-        gallery.update("category", name=data['category'])
+        gdata.category = CategoryData(name=data['category'])
         log.debug("applied category")
-        applied = True
     
     if data.get('language'):
-        gallery.update("language", name=data['language'])
+        gdata.language = LanguageData(name=data['language'])
         log.debug("applied language")
-        applied = True
 
     if isinstance(data.get('tags'), (dict, list)):
         if isinstance(data['tags'], list):
             data['tags'] = {None: data['tags']}
-        ns_tags = []
+        gnstags = []
         for ns, tags in data['tags'].items():
             if ns is not None:
                 ns = ns.strip()
@@ -119,35 +130,43 @@ def apply_metadata(data, gallery):
                 ns = None
             for t in tags:
                 t = t.strip()
-                ns_tags.append(namespacetags_model.as_unique(ns=ns, tag=t))
-        
-        for nstag in ns_tags:
-            if nstag not in gallery.tags:
-                gallery.tags.append(nstag)
-        log.debug("applied tags")
-        applied = True
+                if t:
+                    kw = {'tag': TagData(name=t)}
+                    if ns:
+                        kw['namespace'] = NamespaceData(name=ns)
+                    gnstags.append(NamespaceTagData(**kw))
+
+        if gnstags:
+            gdata.tags = gnstags
+            log.debug("applied tags")
 
     if isinstance(data.get('pub_date'), (datetime.datetime, arrow.Arrow)):
         pub_date = data['pub_date']
-        gallery.update("pub_date", pub_date)
+        gdata.pub_date = pub_date
         log.debug("applied pub_date")
-        applied = True
 
     if isinstance(data.get('urls'), (list, tuple)):
-        existing_urls = [x.name.lower() for x in gallery.urls]
-        urls = []
+        gurls = []
         for u in data['urls']:
-            if u.lower() not in existing_urls:
-                urls.append(url_model(name=u))
-        gallery.update("urls", urls)
-        log.debug("applied urls")
-        applied = True
+            if u:
+                gurls.append(UrlData(name=u))
+        if gurls:
+            gdata.urls = gurls
+            log.debug("applied urls")
+
+    applied = hpx.command.UpdateItemData(gallery, gdata, options=options)
+
+    log.debug(f"applied: {applied}")
 
     return applied
     
 @hpx.subscribe("init")
 def inited():
     common.plugin_config.update(hpx.get_plugin_config())
+
+@hpx.subscribe('config_update')
+def config_update(cfg):
+    common.plugin_config.update(cfg)
 
 @hpx.attach("GalleryFS.parse_metadata_file")
 def parse(path, gallery):
@@ -159,11 +178,18 @@ def parse(path, gallery):
 
     cdata = common.common_data.copy()
 
+    applied = False
+
     for fnames, dtypes in common.filenames.items():
         for fpath, fname in contents.items():
             if fname in fnames:
                 log.debug(f"path: {fpath}")
-                cdata.update(get_common_data(dtypes, fpath))
+                d = get_common_data(dtypes, fpath)
+                if d:
+                    applied = True
+                    cdata.update(d)
                 break
-
-    return apply_metadata(cdata, gallery)
+    if applied:
+        apply_metadata(cdata, gallery)
+        
+    return applied
