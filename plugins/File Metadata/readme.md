@@ -47,6 +47,9 @@ Follow these steps to add support for more kind of files:
 
 # Changelog
 
+- `1.0.0`
+    - Updated to reflect new changes in HPX v0.10.0
+
 - `0.3.0b`
     - **HDoujin**: add option `characters_namespace`
     - **HDoujin**: parse `PARODY` and `CHARACTERS` fields
