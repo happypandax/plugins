@@ -37,8 +37,11 @@ Name | Default | Description
 
 # Changelog
 
+- `1.0.0`
+    - Updated to reflect new changes in HPX v0.10.0
+
 - `0.4.0b`
-    - updated for new EH website design changes
+    - updated to work on new EH website design changes
 
 - `0.3.0b`
     - add a default delay on `https://api.e-hentai.org/` requests, this value can be tweaked in `network.delays` inside your`config.yaml`

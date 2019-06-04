@@ -1,6 +1,5 @@
 # main.py
 import __hpx__ as hpx
-import gevent
 import regex
 import arrow
 import datetime
@@ -13,17 +12,17 @@ from PIL import Image, ImageChops
 
 log = hpx.get_logger("main")
 
-match_url_prefix = r"^(http\:\/\/|https\:\/\/)?(www\.)?" # http:// or https:// + www.
-match_url_end = r"\/?$"
+MATCH_URL_PREFIX = r"^(http\:\/\/|https\:\/\/)?(www\.)?" # http:// or https:// + www.
+MATCH_URL_END = r"\/?$"
 
-default_delay = 6
+DEFAULT_DELAY = 7
 
-urls_regex = {
-    'eh_gallery': match_url_prefix + r"((?<!g\.)(e-hentai)\.org\/g\/[0-9]+\/[a-z0-9]+)" + match_url_end,
-    'ex_gallery': match_url_prefix + r"((exhentai)\.org\/g\/[0-9]+\/[a-z0-9]+)" + match_url_end,
+URLS_REGEX = {
+    'eh_gallery': MATCH_URL_PREFIX + r"((?<!g\.)(e-hentai)\.org\/g\/[0-9]+\/[a-z0-9]+)" + MATCH_URL_END,
+    'ex_gallery': MATCH_URL_PREFIX + r"((exhentai)\.org\/g\/[0-9]+\/[a-z0-9]+)" + MATCH_URL_END,
 }
 
-urls = {
+URLS = {
     'eh': 'https://e-hentai.org',
     'ex': 'https://exhentai.org',
     'api': 'https://api.e-hentai.org/api.php',
@@ -33,7 +32,7 @@ urls = {
 
 HEADERS = {'user-agent':"Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0"}
 
-plugin_config = {
+PLUGIN_CONFIG = {
     'filename_search': True, # use the filename/folder-name for searching instead of gallery title
     'expunged_galleries': False, # enable expunged galleries in results
     'remove_namespaces': True, # remove superfluous namespaces like 'artist', 'language' and 'group' because they are handled specially in HPX
@@ -45,15 +44,19 @@ plugin_config = {
 
 @hpx.subscribe("init")
 def inited():
-    plugin_config.update(hpx.get_plugin_config())
+    PLUGIN_CONFIG.update(hpx.get_plugin_config())
 
     # set default delay values if not set
     delays = hpx.get_setting("network", "delays", {})
-    for u in (urls['ex'], urls['eh'], "https://api.e-hentai.org"):
+    for u in (URLS['ex'], URLS['eh'], "https://api.e-hentai.org"):
         if u not in delays:
-            log.info(f"Setting delay on {u} requests to {default_delay}")
-            delays[u] = default_delay
+            log.info(f"Setting delay on {u} requests to {DEFAULT_DELAY}")
+            delays[u] = DEFAULT_DELAY
             hpx.update_setting("network", "delays", delays)
+
+@hpx.subscribe('config_update')
+def config_update(cfg):
+    PLUGIN_CONFIG.update(cfg)
 
 @hpx.subscribe("disable")
 def disabled():
@@ -67,12 +70,13 @@ def removed():
 def metadata_info_eh():
     return hpx.command.MetadataInfo(
         identifier = "ehentai",
+        batch = 25,
         name = "EHentai",
-        parser = urls_regex['eh_gallery'],
+        parser = URLS_REGEX['eh_gallery'],
         sites = ("www.e-hentai.org",),
         description = "Fetch metadata from E-Hentai",
         models = (
-            hpx.command.GetModelClass("Gallery"),
+            hpx.command.GetDatabaseModel("Gallery"),
         )
     )
 
@@ -80,113 +84,132 @@ def metadata_info_eh():
 def metadata_info_ex():
     return hpx.command.MetadataInfo(
         identifier = "exhentai",
+        batch = 25,
         name = "ExHentai",
-        parser = urls_regex['ex_gallery'],
+        parser = URLS_REGEX['ex_gallery'],
         sites = ("www.exhentai.org",),
         description = "Fetch metadata from ExHentai",
         models = (
-            hpx.command.GetModelClass("Gallery"),
+            hpx.command.GetDatabaseModel("Gallery"),
         )
     )
 
-@hpx.attach("Metadata.query")
-def query_eh(item, url, options, capture="ehentai"):
-    log.info("Querying ehentai for metadata")
-    return query(item, url, options)
+@hpx.attach("Metadata.query", trigger='ehentai')
+def query_eh(itemtuple):
+    log.info(f"Querying ehentai for metadata with {len(itemtuple)} items")
+    return query(itemtuple)
 
-@hpx.attach("Metadata.apply")
-def apply_eh(datatuple, item, options, capture="ehentai"):
-    log.info("Applying metadata from ehentai")
-    return apply(datatuple, item, options)
+@hpx.attach("Metadata.apply", trigger='ehentai')
+def apply_eh(datatuple):
+    log.info(f"Applying metadata from ehentai with {len(datatuple)} items")
+    return apply(datatuple)
 
-@hpx.attach("Metadata.query")
-def query_ex(item, url, options, capture="exhentai"):
-    log.info("Querying exhentai for metadata")
-    if not hpx.command.GetLoginStatus(urls['ex']):
+@hpx.attach("Metadata.query", trigger='exhentai')
+def query_ex(itemtuple):
+    log.info(f"Querying exhentai for metadata with {len(itemtuple)} items")
+    if not hpx.command.GetLoginStatus(URLS['ex']):
         log.info("Not logged in to exhentai, aborting...")
-        return tuple()
-    return query(item, url, options, urls['ex'])
+        rtuple = []
+        for i in itemtuple:
+            mr = hpx.command.MetadataResult(data=hpx.command.MetadataData(metadataitem=i), status=False,
+                    reason="Not logged in to exhentai, aborting...")
+            rtuple.append(mr)
+        return tuple(rtuple)
+    return query(itemtuple, login_site=URLS['ex'])
 
-@hpx.attach("Metadata.apply")
-def apply_ex(datatuple, item, options, capture="exhentai"):
-    log.info("Applying metadata from exhentai")
-    return apply(datatuple, item, options)
+@hpx.attach("Metadata.apply", trigger='exhentai')
+def apply_ex(datatuple):
+    log.info(f"Applying metadata from exhentai with {len(datatuple)} items")
+    return apply(datatuple)
 
-def query(item, url, options, login_site=urls['eh']):
-    "Looks up on ehentai for matching item"
+def query(itemtuple, login_site=URLS['eh']):
+    "Looks up on ehentai for matching items"
     mdata = []
-    gurls = [] # tuple of (title, url)
-    # url was provided
-    if url:
-        log.info(f"url provided: {url} for {item}")
-        gurls.append((url, url))
-    else: # manually search for id
-        log.info(f"url not provided for {item}")
-        ex_login = hpx.command.GetLoginStatus(login_site) if "exhentai" in login_site else False
-        login_session = None
-        if ex_login:
-            login_session = hpx.command.GetLoginSession(login_site)
-        if login_site == 'exhentai':
-            log.info(f"logged in to exhentai: {ex_login}")
-        if (ex_login if "exhentai" in login_site else True):
-            # search with title
-            i_title = ""
-            i_hash = ""
-            if plugin_config.get("filename_search"):
-                sources = item.get_sources()
-                if sources:
-                    # get folder/file name
-                    i_title = os.path.split(sources[0])[1]
-                    # remove ext
-                    i_title = os.path.splitext(i_title)[0]
-            else:
-                if item.titles:
-                    i_title = item.titles[0].name # make user choice
-            if i_title:
-                gurls = title_search(i_title, ex='exhentai' in login_site, session=login_session)
 
-            # search with hash
-            if not gurls:
-                pass
+    # get exhentai login session if applicable
+    ex_login = hpx.command.GetLoginStatus(login_site) if "exhentai" in login_site else False
+    login_session = None
+    if ex_login:
+        login_session = hpx.command.GetLoginSession(login_site)
+    if login_site == 'exhentai':
+        log.info(f"logged in to exhentai: {ex_login}")
 
-    log.info(f"found {len(gurls)} urls for item: {item}")
+    for mitem in itemtuple:
+        gurls = [] # tuple of (title, url)
 
-    # list is sorted by date added so we reverse it
-    gurls.reverse()
+        url = mitem.url
+        item = mitem.item
+        options = mitem.options
 
-    log.debug(f"{gurls}")
-    final_gurls = []
-    pref_lang = plugin_config.get('preferred_language')
-    if pref_lang:
-        for t in gurls:
-            if pref_lang.lower() in t[0].lower():
-                final_gurls.insert(0, t)
-                continue
-            final_gurls.append(t)
-    else:
-        final_gurls = gurls
+        # url was provided
+        if url:
+            log.info(f"url provided: {url} for {item}")
+            gurls.append((url, url))
+        else: # manually search for id
+            log.info(f"url not provided for {item}")
+            if (ex_login if "exhentai" in login_site else True):
+                # search with title
+                i_title = ""
+                i_hash = ""
+                if PLUGIN_CONFIG.get("filename_search"):
+                    sources = item.get_sources()
+                    if sources:
+                        # get folder/file name
+                        i_title = os.path.split(sources[0])[1]
+                        # remove ext
+                        i_title = os.path.splitext(i_title)[0]
+                else:
+                    if item.titles:
+                        i_title = item.titles[0].name # make user choice
+                if i_title:
+                    gurls = title_search(i_title, ex='exhentai' in login_site, session=login_session)
 
-    for t, u in final_gurls:
-        g_id, g_token = parse_url(u)
-        if g_id and g_token:
-            mdata.append(hpx.command.MetadataData(
-                data={
-                    'gallery': [g_id, g_token],
-                    'gallery_url': u,
-                    'apply_url': plugin_config.get('add_gallery_url', True),
-                    }))
+                # TODO: search with hash
+                if not gurls:
+                    pass
+
+        log.info(f"found {len(gurls)} urls for item: {item}")
+
+        # list is sorted by date added so we reverse it
+        gurls.reverse()
+
+        log.debug(f"{gurls}")
+        final_gurls = []
+        # TODO: maybe prefer language of gallery first?
+        pref_lang = PLUGIN_CONFIG.get('preferred_language')
+        if pref_lang:
+            for t in gurls:
+                if pref_lang.lower() in t[0].lower():
+                    final_gurls.insert(0, t)
+                    continue
+                final_gurls.append(t)
+        else:
+            final_gurls = gurls
+
+        for t, u in final_gurls:
+            g_id, g_token = parse_url(u)
+            if g_id and g_token:
+                mdata.append(hpx.command.MetadataData(
+                    metadataitem=mitem,
+                    title=t,
+                    url=u,
+                    data={
+                        'gallery': [g_id, g_token],
+                        'gallery_url': u,
+                        }))
+    log.info(f"Returning {len(mdata)} data items")
     return tuple(mdata)
 
 def title_search(title, ex=True, session=None):
     "Searches on ehentai for galleries with given title, returns a list of (title, matching gallery urls)"
-    if plugin_config.get("expunged_galleries"):
-        eh_url = urls['title_search_exp']
+    if PLUGIN_CONFIG.get("expunged_galleries"):
+        eh_url = URLS['title_search_exp']
     else:
-        eh_url = urls['title_search']
+        eh_url = URLS['title_search']
     log.debug(f"searching with title: {title}")
     f_eh_url = eh_url.format(
-        url=urls['ex'] if ex else urls['eh'],
-        title=urllib.parse.quote_plus(title)
+        url=URLS['ex'] if ex else URLS['eh'],
+        title=urllib.parse.quote_plus(f'"{title}"')
         )
     log.debug(f"final url: {f_eh_url}")
     return eh_page_results(f_eh_url, session=session)
@@ -195,7 +218,7 @@ def eh_page_results(eh_page_url, limit=None, session=None):
     "Opens eh page, parses for results, and then returns list of (title, url)"
     found_urls = []
     if limit is None:
-        limit = plugin_config.get("gallery_results_limit")
+        limit = PLUGIN_CONFIG.get("gallery_results_limit")
 
     # prepare request
     req_props = hpx.command.RequestProperties(
@@ -239,39 +262,50 @@ def parse_url(url):
         log.warning("Error extracting g_id and g_token from url: {}".format(url))
     return int(gallery_id), gallery_token
 
-def apply(datatuple, item, options):
+def apply(datatuple):
+    mresults = []
     applied = False
-
     eh_data = {
         'method': 'gdata',
         'gidlist': [],
         'namespace': 1
     }
 
-    urls_to_apply = []
+    mdata_map = {} # (gid,token):metadatadata and gid:metadatadata
 
     for d in datatuple:
         eh_data['gidlist'].append(d.data['gallery'])
-        if d.data['apply_url']:
-            urls_to_apply.append(d.data['gallery_url'])
+        mdata_map[tuple(d.data['gallery'])] = d
+        mdata_map[d.data['gallery'][0]] = d # used for when token is invalid, assumes that there's no duplicate gid's
 
     # prepare request
     req_props = hpx.command.RequestProperties(
         headers=HEADERS,
         json=eh_data
         )
-    r = hpx.command.SinglePOSTRequest().request(urls['api'], req_props)
+    r = hpx.command.SinglePOSTRequest().request(URLS['api'], req_props)
     if r.ok:
         response = r.json
         if response and not 'error' in response:
             for gdata in response['gmetadata']:
-                mdata = filter_metadata(gdata, item, urls_to_apply=urls_to_apply)
-                applied = apply_metadata(mdata, item)
+                if 'error' in gdata:
+                    mdata = mdata_map[gdata['gid']]
+                    mresults.append(hpx.command.MetadataResult(data=mdata, status=False, reason=gdata['error']))
+                else:
+                    mdata = mdata_map[(gdata['gid'], gdata['token'])]
+                    urls_to_apply = []
+                    if PLUGIN_CONFIG.get('add_gallery_url', True):
+                        urls_to_apply.append(mdata.data['gallery_url'])
+                    fdata = format_metadata(gdata, mdata.metadataitem.item, urls_to_apply=urls_to_apply)
+                    applied = apply_metadata(fdata, mdata.metadataitem.item, mdata.options)
+                    mresults.append(hpx.command.MetadataResult(data=mdata, status=applied, reason="No data was applied" if not applied else ""))
 
         elif response:
             log.warning(response)
-    log.info(f"Applied: {applied}")
-    return applied
+            for d in datatuple:
+                mresults.append(hpx.command.MetadataResult(data=d, status=False, reason=response['error']))
+
+    return tuple(mresults)
 
 def capitalize_text(text):
     """
@@ -279,52 +313,51 @@ def capitalize_text(text):
     """
     return " ".join(x.capitalize() for x in text.strip().split())
 
-def filter_metadata(gdata, item, urls_to_apply=None):
+def format_metadata(gdata, item, urls_to_apply=None):
+    """
+    Formats metadata to look like this for apply_metadata:
+    data = {
+        'titles': None, # [(title, language),...]
+        'artists': None, # [(artist, (circle, circle, ..)),...]
+        'parodies': None, # [parody, ...]
+        'category': None,
+        'tags': None, # [tag, tag, tag, ..] or {ns:[tag, tag, tag, ...]}
+        'pub_date': None, # DateTime object or Arrow object
+        'language': None,
+        'urls': None # [url, ...]
+    }
+    """
     mdata = {}
-    replace_metadata = hpx.get_setting('metadata', 'replace_metadata')
-    if replace_metadata:
-        item.titles = []
-        item.artists = []
-        item.tags = []
-        # flush is required so items are removed from the db
-        hpx.command.GetSession().flush()
 
-    if replace_metadata:
-        mdata['titles'] = []
-        mdata['titles'].append((gdata['title'], 'english'))
-        mdata['titles'].append((gdata['title_jpn'], 'japanese'))
-    else:
-        t = []
-        if not item.title_by_language("english"):
-            t.append((gdata['title'], 'english'))
-        if not item.title_by_language("japanese"):
-            t.append((gdata['title_jpn'], 'japanese'))
-        if t:
-            mdata['titles'] = t
+    mdata['titles'] = []
 
-    if replace_metadata:
-        mdata['category'] = gdata['category']
-    elif not item.category:
-        mdata['category'] = gdata['category']
+    parsed_text = hpx.command.ItemTextParser(gdata['title'])
+    
+    parsed_title = parsed_text.extract_title()
+    if parsed_title:
+        parsed_title = parsed_title[0]
+    mdata['titles'].append((parsed_title or gdata['title'], 'english'))
 
-    if replace_metadata:
-        mdata['pub_date'] = arrow.Arrow.fromtimestamp(gdata['posted'])
-    elif not item.pub_date:
-        mdata['pub_date'] = arrow.Arrow.fromtimestamp(gdata['posted'])
+    mdata['titles'].append((gdata['title_jpn'], 'japanese'))
 
-    lang = "japanese" # def lang
-    if not replace_metadata and item.language:
-        lang = item.language.name
 
-    artists = []
-    circles = []
-    parodies = []
+    mdata['category'] = gdata['category']
+    mdata['pub_date'] = arrow.Arrow.fromtimestamp(gdata['posted'])
 
-    extra_namespaces = ("artist", "parody", "group", "language")
+    lang = "japanese" # default language
+
+    artists = set()
+    circles = set()
+    parodies = set()
+
+    parsed_artists = parsed_text.extract_artist()
+    parsed_circles = parsed_text.extract_circle()
+
+    extranous_namespaces = ("artist", "parody", "group", "language")
     mdata['tags'] = {}
     for nstag in gdata['tags']:
 
-        blacklist_tags = plugin_config.get("blacklist_tags")
+        blacklist_tags = PLUGIN_CONFIG.get("blacklist_tags")
         if blacklist_tags and nstag in blacklist_tags:
             continue
 
@@ -337,55 +370,60 @@ def filter_metadata(gdata, item, urls_to_apply=None):
         if ns == 'language' and t != 'translated':
             lang = t
         elif ns == "artist":
-            artists.append(t)
+            for a in artists: # the artist extracted from the title likely has better capitalization, so choose that instead
+                if a.lower() == t.lower():
+                    artists.add(a)
+                    break
+            else:
+                artists.add(t)
         elif ns == "group":
-            circles.append(t)
+            for c in circles: # the circle extracted from the title likely has better capitalization, so choose that instead
+                if c.lower() == t.lower():
+                    circles.add(c)
+                    break
+            else:
+                circles.add(t)
         elif ns == "parody":
-            parodies.append(t)
+            parodies.add(t)
         
-        if not (plugin_config.get("remove_namespaces") and ns in extra_namespaces):
+        if not (PLUGIN_CONFIG.get("remove_namespaces") and ns in extranous_namespaces):
             mdata['tags'].setdefault(ns, []).append(t)
         else:
             log.debug(f"removing namespace {ns}")
         
     log.debug(f"tags: {mdata['tags']}")
 
-    if replace_metadata:
-        mdata['language'] = lang
-    elif not item.language:
-        mdata['language'] = lang
+    mdata['language'] = lang
     
     if parodies:
-        if replace_metadata:
-            item.parodies = []
-            mdata['parodies'] = parodies
-        elif not item.parodies:
-            mdata['parodies'] = parodies
+        mdata['parodies'] = parodies
 
     if artists:
         a_circles = []
         for a in artists:
-            a_circles.append((a, tuple(circles)))
-        if replace_metadata:
-            item.artists = []
-            mdata['artists'] = a_circles
-        elif not item.artists:
-            mdata['artists'] = a_circles
+            a_circles.append((a, tuple(circles))) # assign circles to each artist
+        mdata['artists'] = a_circles
 
     if urls_to_apply:
         mdata['urls'] = urls_to_apply
 
     return mdata
 
-language_model = hpx.command.GetModelClass("Language")
-title_model = hpx.command.GetModelClass("Title")
-artist_model = hpx.command.GetModelClass("Artist")
-parody_model = hpx.command.GetModelClass("Parody")
-circle_model = hpx.command.GetModelClass("Circle")
-url_model = hpx.command.GetModelClass("Url")
-namespacetags_model = hpx.command.GetModelClass("NamespaceTags")
+GalleryData = hpx.command.GalleryData
+LanguageData = hpx.command.LanguageData
+TitleData = hpx.command.TitleData
+ArtistData = hpx.command.ArtistData
+ArtistNameData = hpx.command.ArtistNameData
+ParodyData = hpx.command.ParodyData
+ParodyNameData = hpx.command.ParodyNameData
+CircleData = hpx.command.CircleData
+CategoryData = hpx.command.CategoryData
+UrlData = hpx.command.UrlData
+NamespaceTagData= hpx.command.NamespaceTagData
+TagData= hpx.command.TagData
+NamespaceData = hpx.command.NamespaceData
 
-def apply_metadata(data, gallery):
+def apply_metadata(data, gallery, options):
     """
     data = {
         'titles': None, # [(title, language),...]
@@ -399,61 +437,66 @@ def apply_metadata(data, gallery):
     }
     """
 
-    applied = False
-
     log.debug(f"data: {data}")
 
-    if isinstance(data.get('titles'), (list, tuple)):
+    gdata = GalleryData()
+
+    if isinstance(data.get('titles'), (list, tuple, set)):
+        gtitles = []
         for t, l in data['titles']:
             gtitle = None
             if t:
                 t = html.unescape(t)
-                gtitle = title_model(name=t)
+                gtitle = TitleData(name=t)
             if t and l:
-                gtitle.language = language_model.as_unique(name=l)
+                gtitle.language = LanguageData(name=l)
             if gtitle:
-                gallery.update("titles", gtitle)
-        log.debug("applied titles")
-        applied = True
+                gtitles.append(gtitle)
 
-    if isinstance(data.get('artists'), (list, tuple)):
+        if gtitles:
+            gdata.titles = gtitles
+            log.debug("applied titles")
+
+    if isinstance(data.get('artists'), (list, tuple, set)):
+        gartists = []
         for a, c in data['artists']:
             if a:
-                gartist = artist_model.as_unique(name=capitalize_text(a))
-                if not gartist in gallery.artists:
-                    gallery.update("artists", gartist)
-            if a and c:
-                for circlename in [x for x in c if x]:
-                    gcircle = circle_model.as_unique(name=capitalize_text(circlename))
-                    if not gcircle in gartist.circles:
-                        gartist.update("circles", gcircle)
-        log.debug("applied artists")
-        applied = True
+                gartist = ArtistData(names=[ArtistNameData(name=capitalize_text(a))])
+                gartists.append(gartist)
 
-    if isinstance(data.get('parodies'), (list, tuple)):
+                if c:
+                    gcircles = []
+                    for circlename in [x for x in c if x]:
+                        gcircles.append(CircleData(name=capitalize_text(circlename)))
+                    gartist.circles = gcircles
+
+        if gartists:
+            gdata.artists = gartists
+            log.debug("applied artists")
+
+    if isinstance(data.get('parodies'), (list, tuple, set)):
+        gparodies = []
         for p in data['parodies']:
             if p:
-                gparody = parody_model.as_unique(name=capitalize_text(p))
-                if not gparody in gallery.parodies:
-                    gallery.update("parodies", gparody)
+                gparody = ParodyData(names=[ParodyNameData(name=capitalize_text(p))])
+                gparodies.append(gparody)
 
-        log.debug("applied parodies")
-        applied = True
+        if gparodies:
+            gdata.parodies = gparodies
+            log.debug("applied parodies")
 
     if data.get('category'):
-        gallery.update("category", name=data['category'])
+        gdata.category = CategoryData(name=data['category'])
         log.debug("applied category")
-        applied = True
     
     if data.get('language'):
-        gallery.update("language", name=data['language'])
+        gdata.language = LanguageData(name=data['language'])
         log.debug("applied language")
-        applied = True
 
     if isinstance(data.get('tags'), (dict, list)):
         if isinstance(data['tags'], list):
             data['tags'] = {None: data['tags']}
-        ns_tags = []
+        gnstags = []
         for ns, tags in data['tags'].items():
             if ns is not None:
                 ns = ns.strip()
@@ -461,42 +504,32 @@ def apply_metadata(data, gallery):
                 ns = None
             for t in tags:
                 t = t.strip()
-                ns_tags.append(namespacetags_model.as_unique(ns=ns, tag=t))
-        
-        for nstag in ns_tags:
-            if nstag not in gallery.tags:
-                gallery.tags.append(nstag)
-        log.debug("applied tags")
-        applied = True
+                if t:
+                    kw = {'tag': TagData(name=t)}
+                    if ns:
+                        kw['namespace'] = NamespaceData(name=ns)
+                    gnstags.append(NamespaceTagData(**kw))
+
+        if gnstags:
+            gdata.tags = gnstags
+            log.debug("applied tags")
 
     if isinstance(data.get('pub_date'), (datetime.datetime, arrow.Arrow)):
         pub_date = data['pub_date']
-        gallery.update("pub_date", pub_date)
+        gdata.pub_date = pub_date
         log.debug("applied pub_date")
-        applied = True
 
     if isinstance(data.get('urls'), (list, tuple)):
-        existing_urls = [x.name.lower() for x in gallery.urls]
-        urls = []
+        gurls = []
         for u in data['urls']:
-            if u.lower() not in existing_urls:
-                urls.append(url_model(name=u))
-        gallery.update("urls", urls)
-        log.debug("applied urls")
-        applied = True
+            if u:
+                gurls.append(UrlData(name=u))
+        if gurls:
+            gdata.urls = gurls
+            log.debug("applied urls")
+
+    applied = hpx.command.UpdateItemData(gallery, gdata, options=options)
+
+    log.debug(f"applied: {applied}")
 
     return applied
-
-def is_image_greyscale(filepath):
-    "Check if image is monochrome (1 channel or 3 identical channels)"
-    im = Image.open(filepath).convert("RGB")
-    if im.mode not in ("L", "RGB"):
-        return False
-
-    if im.mode == "RGB":
-        rgb = im.split()
-        if ImageChops.difference(rgb[0],rgb[1]).getextrema()[1] != 0: 
-            return False
-        if ImageChops.difference(rgb[0],rgb[2]).getextrema()[1] != 0: 
-            return False
-    return True
