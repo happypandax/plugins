@@ -60,7 +60,7 @@ class EHentaiDownloader(common.Extractor):
                         d.setdefault('urls', []).append(line)
                     else:
                         title_lang = "english" if linenum == 1 else "japanese"
-                        nameparser = hpx.command.NameParser(line)
+                        nameparser = hpx.command.ItemTextParser(line)
                         parsed_title = nameparser.extract_title()
                         d.setdefault("titles", []).append((parsed_title[0] if parsed_title else line, title_lang))
                     continue
