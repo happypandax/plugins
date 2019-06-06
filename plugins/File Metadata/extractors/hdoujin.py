@@ -35,7 +35,7 @@ class HDoujin(common.Extractor):
 
             for t, l in ((mtitle, "english"), (mtitle_jp, "japanese")):
                 if t:
-                    nameparser = hpx.command.NameParser(t)
+                    nameparser = hpx.command.ItemTextParser(t)
                     parsed_title = nameparser.extract_title()
                     d.setdefault("titles", []).append((parsed_title[0] if parsed_title else t, l))
 

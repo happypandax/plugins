@@ -47,6 +47,10 @@ Follow these steps to add support for more kind of files:
 
 # Changelog
 
+- `1.0.1`
+    - Updated the eze handler to support files produced by https://github.com/dnsev-h/ehentai-archive-info
+    - Fixed the extractors still using the old api
+
 - `1.0.0`
     - Updated to reflect new changes in HPX v0.10.0
 
