@@ -7,8 +7,11 @@ class Eze(common.Extractor):
 
     def file_to_dict(self, fs):
         d = super().file_to_dict(fs)
-        k = ('gallery_info', 'image_info')
+        k = ('gallery_info',)
         if d and not all(map(lambda x: x in d, k)): # make sure all keys are present
+            d = None
+        k =  ('image_info', 'gallery_info_full')
+        if d and not any(map(lambda x: x in d, k)): # make sure one of the keys are present
             d = None
         return d
 
@@ -26,7 +29,7 @@ class Eze(common.Extractor):
 
             for t, l in ((mtitle, "english"), (mtitle_jp, "japanese")):
                 if t:
-                    nameparser = hpx.command.NameParser(t)
+                    nameparser = hpx.command.ItemTextParser(t)
                     parsed_title = nameparser.extract_title()
                     d.setdefault("titles", []).append((parsed_title[0] if parsed_title else t, l))
 
