@@ -26,11 +26,12 @@ URLS = {
     'eh': 'https://e-hentai.org',
     'ex': 'https://exhentai.org',
     'api': 'https://api.e-hentai.org/api.php',
-    'title_search': '{url}/?f_doujinshi=1&f_manga=1&f_artistcg=1&f_gamecg=1&f_western=1&f_non-h=1&f_imageset=1&f_cosplay=1&f_asianporn=1&f_misc=1&f_search={title}&f_apply=Apply+Filter&advsearch=1&f_sname=on&f_stags=on&f_storr=on&f_srdd=2&f_sfl=on&f_sfu=on',
-    'title_search_exp': '{url}/?f_doujinshi=1&f_manga=1&f_artistcg=1&f_gamecg=1&f_western=1&f_non-h=1&f_imageset=1&f_cosplay=1&f_asianporn=1&f_misc=1&f_search={title}&f_apply=Apply+Filter&advsearch=1&f_sname=on&f_stags=on&f_storr=on&f_sh=on&f_srdd=2&f_sfl=on&f_sfu=on'
+    'title_search': '{url}/?{query}&f_apply=Apply+Filter&advsearch=1&f_sname=on&f_stags=on&f_storr=on&f_srdd=2&f_sfl=on&f_sfu=on',
 }
 
 HEADERS = {'user-agent':"Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0"}
+
+DEFAULT_CATEGORIES =  ['manga', 'artistcg', 'gamecg', 'western', 'imageset', 'cosplay', 'asianporn', 'misc']
 
 PLUGIN_CONFIG = {
     'filename_search': True, # use the filename/folder-name for searching instead of gallery title
@@ -39,7 +40,12 @@ PLUGIN_CONFIG = {
     'gallery_results_limit': 10, # maximum amount of galleries to return
     'blacklist_tags': [], # tags to ignore when updating tags
     'add_gallery_url': True, # add ehentai url to gallery
-    'preferred_language': "english", # preferred gallery langauge (in gallery title) to extract from if multiple galleries were found, set empty string for default
+    'preferred_language': "english", # preferred gallery langauge (in gallery title) to extract from if multiple galleries were found, set empty string for default,
+    'enabled_categories': DEFAULT_CATEGORIES, # categories that are enbaled in the search
+    'search_query': "{title}", # the search query, '{title}' will be replaced with the gallery title, use double curly brackets to escape a bracket
+    'search_low_power_tags': True, # enable search low power tags
+    'search_torrent_name':True, # enable search torrent name
+    'search_gallery_description': False, # enable search gallery description
 }
 
 @hpx.subscribe("init")
@@ -202,14 +208,40 @@ def query(itemtuple, login_site=URLS['eh']):
 
 def title_search(title, ex=True, session=None):
     "Searches on ehentai for galleries with given title, returns a list of (title, matching gallery urls)"
-    if PLUGIN_CONFIG.get("expunged_galleries"):
-        eh_url = URLS['title_search_exp']
-    else:
-        eh_url = URLS['title_search']
+    eh_url = URLS['title_search']
     log.debug(f"searching with title: {title}")
+    sq = PLUGIN_CONFIG.get("search_query")
+    try:
+        sq = sq.format(title)
+    except:
+        log.warning("Failed to use customized search query")
+        sq = title
+    log.info(f"Final search query: {sq}")
+
+    params = {f'f_{c}': '0' for c in DEFAULT_CATEGORIES}
+
+    if PLUGIN_CONFIG.get("expunged_galleries"):
+        params['f_sh'] = 'on'
+
+    if PLUGIN_CONFIG.get("search_low_power_tags"):
+        params['f_sdt1'] = 'on'
+
+    if PLUGIN_CONFIG.get("search_gallery_description"):
+        params['f_sdesc'] = 'on'
+
+    if PLUGIN_CONFIG.get("search_torrent_name"):
+        params['f_storr'] = 'on'
+
+    for c in PLUGIN_CONFIG.get("enabled_categories"):
+        params[f'f_{c.lower()}'] = '1'
+
+    params['f_search'] = urllib.parse.quote_plus(f'"{sq}"')
+    log.info(f"final params: {params}")
+    param_query = urllib.parse.urlencode(params)
+
     f_eh_url = eh_url.format(
         url=URLS['ex'] if ex else URLS['eh'],
-        title=urllib.parse.quote_plus(f'"{title}"')
+        query=param_query
         )
     log.debug(f"final url: {f_eh_url}")
     return eh_page_results(f_eh_url, session=session)
@@ -467,7 +499,7 @@ def apply_metadata(data, gallery, options):
                 if c:
                     gcircles = []
                     for circlename in [x for x in c if x]:
-                        gcircles.append(CircleData(name=ca  pitalize_text(circlename)))
+                        gcircles.append(CircleData(name=capitalize_text(circlename)))
                     gartist.circles = gcircles
 
         if gartists:
