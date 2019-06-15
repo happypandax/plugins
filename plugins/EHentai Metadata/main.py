@@ -211,14 +211,21 @@ def title_search(title, ex=True, session=None):
     eh_url = URLS['title_search']
     log.debug(f"searching with title: {title}")
     sq = PLUGIN_CONFIG.get("search_query")
+
+    params = {f'f_{c}': '0' for c in DEFAULT_CATEGORIES}
+
+    title = f'"{title}"'
+
     try:
-        sq = sq.format(title)
+        sq = sq.format(title=title)
     except:
         log.warning("Failed to use customized search query")
         sq = title
+
+    params['f_search'] = sq
+
     log.info(f"Final search query: {sq}")
 
-    params = {f'f_{c}': '0' for c in DEFAULT_CATEGORIES}
 
     if PLUGIN_CONFIG.get("expunged_galleries"):
         params['f_sh'] = 'on'
@@ -235,7 +242,6 @@ def title_search(title, ex=True, session=None):
     for c in PLUGIN_CONFIG.get("enabled_categories"):
         params[f'f_{c.lower()}'] = '1'
 
-    params['f_search'] = urllib.parse.quote_plus(f'"{sq}"')
     log.info(f"final params: {params}")
     param_query = urllib.parse.urlencode(params)
 
@@ -243,7 +249,7 @@ def title_search(title, ex=True, session=None):
         url=URLS['ex'] if ex else URLS['eh'],
         query=param_query
         )
-    log.debug(f"final url: {f_eh_url}")
+    log.info(f"final url: {f_eh_url}")
     return eh_page_results(f_eh_url, session=session)
 
 def eh_page_results(eh_page_url, limit=None, session=None):
@@ -499,7 +505,7 @@ def apply_metadata(data, gallery, options):
                 if c:
                     gcircles = []
                     for circlename in [x for x in c if x]:
-                        gcircles.append(CircleData(name=ca  pitalize_text(circlename)))
+                        gcircles.append(CircleData(name=capitalize_text(circlename)))
                     gartist.circles = gcircles
 
         if gartists:
