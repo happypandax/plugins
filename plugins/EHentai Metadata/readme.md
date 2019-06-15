@@ -28,8 +28,12 @@ Name | Default | Description
 `gallery_results_limit` | `10` | maximum amount of galleries to return
 `blacklist_tags` | `[]` | tags to ignore when updating tags, a list of `namespace:tag` strings
 `add_gallery_url` | `true` | add ehentai url to gallery
-`preferred_language` | `english` | preferred gallery langauge (in gallery title) to extract from if multiple galleries were found, set empty string for default
-
+`preferred_language` | `"english"` | preferred gallery language (in gallery title) to extract from if multiple galleries were found, set empty string for default
+`enabled_categories` | `['manga', 'doujinshi', 'non-h', 'artistcg', 'gamecg', 'western', 'imageset', 'cosplay', 'asianporn', 'misc']` | categories that are enbaled for the search
+`search_query` | `"{title}"` | the search query, '{title}' will be replaced with the gallery title, use double curly brackets to escape a curly bracket. Tip: if you want to only allow english results, you should modify this to "{title} english"
+`search_low_power_tags` | `true` | enable search low power tags
+`search_torrent_name` | `true` | enable search torrent name
+`search_gallery_description` | `false` | enable search gallery description
 
 ## Things yet to be implemented
 
@@ -37,8 +41,11 @@ Name | Default | Description
 
 # Changelog
 
+- `1.1.0`
+    - added several new options and fixed some errors
+
 - `1.0.0`
-    - Updated to reflect new changes in HPX v0.10.0
+    - updated to reflect new changes in HPX v0.10.0
 
 - `0.4.0b`
     - updated to work on new EH website design changes
