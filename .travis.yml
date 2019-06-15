@@ -21,3 +21,7 @@ script:
     - git config --local user.email "$GH_MAIL"
     - git commit -am "build"
     - git push --quiet "https://$GITHUB_TOKEN@github.com/$REPO.git" master > /dev/null 2>&1
+
+branches:
+  only:
+    - master
