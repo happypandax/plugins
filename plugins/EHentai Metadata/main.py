@@ -31,7 +31,7 @@ URLS = {
 
 HEADERS = {'user-agent':"Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0"}
 
-DEFAULT_CATEGORIES =  ['manga', 'artistcg', 'gamecg', 'western', 'imageset', 'cosplay', 'asianporn', 'misc']
+DEFAULT_CATEGORIES =  ['manga', 'doujinshi', 'non-h', 'artistcg', 'gamecg', 'western', 'imageset', 'cosplay', 'asianporn', 'misc']
 
 PLUGIN_CONFIG = {
     'filename_search': True, # use the filename/folder-name for searching instead of gallery title

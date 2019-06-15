@@ -29,8 +29,8 @@ Name | Default | Description
 `blacklist_tags` | `[]` | tags to ignore when updating tags, a list of `namespace:tag` strings
 `add_gallery_url` | `true` | add ehentai url to gallery
 `preferred_language` | `"english"` | preferred gallery language (in gallery title) to extract from if multiple galleries were found, set empty string for default
-`enabled_categories` | `['manga', 'artistcg', 'gamecg', 'western', 'imageset', 'cosplay', 'asianporn', 'misc']` | categories that are enbaled for the search
-`search_query` | `"{title}"` | the search query, '{title}' will be replaced with the gallery title, use double curly brackets to escape a curly bracket
+`enabled_categories` | `['manga', 'doujinshi', 'non-h', 'artistcg', 'gamecg', 'western', 'imageset', 'cosplay', 'asianporn', 'misc']` | categories that are enbaled for the search
+`search_query` | `"{title}"` | the search query, '{title}' will be replaced with the gallery title, use double curly brackets to escape a curly bracket. Tip: if you want to only allow english results, you should modify this to "{title} english"
 `search_low_power_tags` | `true` | enable search low power tags
 `search_torrent_name` | `true` | enable search torrent name
 `search_gallery_description` | `false` | enable search gallery description
