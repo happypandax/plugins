@@ -499,7 +499,7 @@ def apply_metadata(data, gallery, options):
                 if c:
                     gcircles = []
                     for circlename in [x for x in c if x]:
-                        gcircles.append(CircleData(name=capitalize_text(circlename)))
+                        gcircles.append(CircleData(name=ca  pitalize_text(circlename)))
                     gartist.circles = gcircles
 
         if gartists:
