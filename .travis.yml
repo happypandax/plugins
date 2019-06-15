@@ -19,5 +19,5 @@ script:
     - python3 build.py
     - git config --local user.name "$GH_USER"
     - git config --local user.email "$GH_MAIL"
-    - git commit -m "build"
+    - git commit -am "build"
     - git push --quiet "https://$GITHUB_TOKEN@github.com/$REPO.git" master > /dev/null 2>&1
