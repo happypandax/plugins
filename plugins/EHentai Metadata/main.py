@@ -15,7 +15,7 @@ log = hpx.get_logger("main")
 MATCH_URL_PREFIX = r"^(http\:\/\/|https\:\/\/)?(www\.)?" # http:// or https:// + www.
 MATCH_URL_END = r"\/?$"
 
-DEFAULT_DELAY = 7
+DEFAULT_DELAY = 8
 
 URLS_REGEX = {
     'eh_gallery': MATCH_URL_PREFIX + r"((?<!g\.)(e-hentai)\.org\/g\/[0-9]+\/[a-z0-9]+)" + MATCH_URL_END,
