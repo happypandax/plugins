@@ -47,6 +47,9 @@ Follow these steps to add support for more kind of files:
 
 # Changelog
 
+- `1.0.2`
+    - Fixed a bug where not all metadata would be applied
+
 - `1.0.1`
     - Updated the eze handler to support files produced by https://github.com/dnsev-h/ehentai-archive-info
     - Fixed the extractors still using the old api
