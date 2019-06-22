@@ -38,6 +38,7 @@ def get_common_data(datatypes, fpath):
                 break
     return d
 
+SetValue = hpx.command.Set
 GalleryData = hpx.command.GalleryData
 LanguageData = hpx.command.LanguageData
 TitleData = hpx.command.TitleData
@@ -83,43 +84,43 @@ def apply_metadata(data, gallery, options={}):
                 gtitles.append(gtitle)
 
         if gtitles:
-            gdata.titles = gtitles
+            gdata.titles = SetValue(gtitles)
             log.debug("applied titles")
 
     if isinstance(data.get('artists'), (list, tuple, set)):
         gartists = []
         for a, c in data['artists']:
             if a:
-                gartist = ArtistData(names=[ArtistNameData(name=capitalize_text(a))])
+                gartist = ArtistData(names=[ArtistNameData(name=common.capitalize_text(a))])
                 gartists.append(gartist)
 
                 if c:
                     gcircles = []
                     for circlename in [x for x in c if x]:
-                        gcircles.append(CircleData(name=capitalize_text(circlename)))
+                        gcircles.append(CircleData(name=common.capitalize_text(circlename)))
                     gartist.circles = gcircles
 
         if gartists:
-            gdata.artists = gartists
+            gdata.artists = SetValue(gartists)
             log.debug("applied artists")
 
     if isinstance(data.get('parodies'), (list, tuple, set)):
         gparodies = []
         for p in data['parodies']:
             if p:
-                gparody = ParodyData(names=[ParodyNameData(name=capitalize_text(p))])
+                gparody = ParodyData(names=[ParodyNameData(name=common.capitalize_text(p))])
                 gparodies.append(gparody)
 
         if gparodies:
-            gdata.parodies = gparodies
+            gdata.parodies = SetValue(gparodies)
             log.debug("applied parodies")
 
     if data.get('category'):
-        gdata.category = CategoryData(name=data['category'])
+        gdata.category = SetValue(CategoryData(name=data['category']))
         log.debug("applied category")
     
     if data.get('language'):
-        gdata.language = LanguageData(name=data['language'])
+        gdata.language = SetValue(LanguageData(name=data['language']))
         log.debug("applied language")
 
     if isinstance(data.get('tags'), (dict, list)):
@@ -140,12 +141,12 @@ def apply_metadata(data, gallery, options={}):
                     gnstags.append(NamespaceTagData(**kw))
 
         if gnstags:
-            gdata.tags = gnstags
+            gdata.tags = SetValue(gnstags)
             log.debug("applied tags")
 
     if isinstance(data.get('pub_date'), (datetime.datetime, arrow.Arrow)):
         pub_date = data['pub_date']
-        gdata.pub_date = pub_date
+        gdata.pub_date = SetValue(pub_date)
         log.debug("applied pub_date")
 
     if isinstance(data.get('urls'), (list, tuple)):
@@ -154,7 +155,7 @@ def apply_metadata(data, gallery, options={}):
             if u:
                 gurls.append(UrlData(name=u))
         if gurls:
-            gdata.urls = gurls
+            gdata.urls = SetValue(gurls)
             log.debug("applied urls")
 
     applied = hpx.command.UpdateItemData(gallery, gdata, options=options)
