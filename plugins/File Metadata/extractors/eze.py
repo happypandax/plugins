@@ -1,3 +1,4 @@
+import arrow
 import __hpx__ as hpx
 from . import common
 
@@ -47,6 +48,10 @@ class Eze(common.Extractor):
             msource = filedata.get('source')
             if msource:
                 d.setdefault('urls', []).append(f"https://{msource['site']}.org/g/{msource['gid']}/{msource['token']}")
+
+            mupdate = filedata.get("upload_date")
+            if mupdate:
+                d['pub_date'] = arrow.get(*mupdate)
 
         return d
 

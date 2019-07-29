@@ -47,6 +47,9 @@ Follow these steps to add support for more kind of files:
 
 # Changelog
 
+- `1.0.3`
+    - Updated the eze handler to save uploaded date as published date
+
 - `1.0.2`
     - Fixed a bug where not all metadata would be applied
 
