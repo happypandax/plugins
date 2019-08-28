@@ -172,120 +172,94 @@ def inited():
 def config_update(cfg):
     common.plugin_config.update(cfg)
 
-@hpx.attach("GalleryFS.parse_metadata_file")
-def parse(path, gallery):
+def has_file_metadata(path):
     fs = hpx.command.CoreFS(path)
 
     contents = {x: os.path.split(x)[1].lower() for x in fs.contents(corefs=False) if x.lower().endswith(common.filetypes)}
     log.debug(f"Contents for {fs.path}:")
     log.debug(f"{tuple(contents.values())}")
 
-    cdata = common.common_data.copy()
-
-    applied = False
-
+    found_files = []
     for fnames, dtypes in common.filenames.items():
         for fpath, fname in contents.items():
             if fname in fnames:
-                log.debug(f"path: {fpath}")
-                d = get_common_data(dtypes, fpath)
-                if d:
-                    applied = True
-                    cdata.update(d)
+                found_files.append((dtypes, fpath))
                 break
+
+    return found_files
+
+def apply_file_metadata(gallery, found_files):
+    applied = False
+    cdata = common.common_data.copy()
+    for dtypes, fpath in found_files:
+        log.debug(f"path: {fpath}")
+        d = get_common_data(dtypes, fpath)
+        if d:
+            applied = True
+            cdata.update(d)
+
     if applied:
         apply_metadata(cdata, gallery)
-        
+
     return applied
 
-# This is work in progress to turn this plugin into a regular metadata handler too
+@hpx.attach("GalleryFS.parse_metadata_file")
+def parse(path, gallery):
+    f = has_file_metadata(path)
+    return apply_file_metadata(gallery, f)
 
-# @hpx.attach("Metadata.info")
-# def metadata_info():
-#     return hpx.command.MetadataInfo(
-#         identifier = "filemetadata",
-#         batch = 25,
-#         name = "File Metadata",
-#         description = "Extracts and applies metadata from a file accompanying a gallery. Supports files produced from eze, e-hentai-downloader and hdoujin",
-#         models = (
-#             hpx.command.GetDatabaseModel("Gallery"),
-#         )
-#     )
+##### --- 
 
-# def query(itemtuple, login_site=URLS['eh']):
-#     "Looks up files for matching items"
-#     mdata = []
+@hpx.attach("Metadata.info")
+def metadata_info():
+    return hpx.command.MetadataInfo(
+        identifier = "filemetadata",
+        name = "File Metadata",
+        description = "Extracts and applies metadata from a file accompanying a gallery",
+        sites= ("eze", "E-Hentai-Downloader", "HDoujinDownloader"),
+        models = (
+            hpx.command.GetDatabaseModel("Gallery"),
+        )
+    )
 
-#     # get exhentai login session if applicable
-#     ex_login = hpx.command.GetLoginStatus(login_site) if "exhentai" in login_site else False
-#     login_session = None
-#     if ex_login:
-#         login_session = hpx.command.GetLoginSession(login_site)
-#     if login_site == 'exhentai':
-#         log.info(f"logged in to exhentai: {ex_login}")
+@hpx.attach("Metadata.query", trigger='filemetadata')
+def query(itemtuple):
+    "Looks up files for matching items"
+    mdata = []
 
-#     for mitem in itemtuple:
-#         gurls = [] # tuple of (title, url)
+    for mitem in itemtuple:
+        item = mitem.item
+        options = mitem.options
 
-#         url = mitem.url
-#         item = mitem.item
-#         options = mitem.options
+        found_files = []
+        for s in item.get_sources():
+            found_files.extend(has_file_metadata(s))
 
-#         # url was provided
-#         if url:
-#             log.info(f"url provided: {url} for {item}")
-#             gurls.append((url, url))
-#         else: # manually search for id
-#             log.info(f"url not provided for {item}")
-#             if (ex_login if "exhentai" in login_site else True):
-#                 # search with title
-#                 i_title = ""
-#                 i_hash = ""
-#                 if PLUGIN_CONFIG.get("filename_search"):
-#                     sources = item.get_sources()
-#                     if sources:
-#                         # get folder/file name
-#                         i_title = os.path.split(sources[0])[1]
-#                         # remove ext
-#                         i_title = os.path.splitext(i_title)[0]
-#                 else:
-#                     if item.titles:
-#                         i_title = item.titles[0].name # make user choice
-#                 if i_title:
-#                     gurls = title_search(i_title, ex='exhentai' in login_site, session=login_session)
+        log.info(f"found {len(found_files)} metadata files for item: {item}")
 
-#                 # TODO: search with hash
-#                 if not gurls:
-#                     pass
+        if found_files:
+            log.debug(f"{found_files}")
 
-#         log.info(f"found {len(gurls)} urls for item: {item}")
+            mdata.append(hpx.command.MetadataData(
+                metadataitem=mitem,
+                title=item.preferred_title.name if item.preferred_title else '',
+                data={
+                    'found':found_files,
+                }))
 
-#         # list is sorted by date added so we reverse it
-#         gurls.reverse()
+    log.info(f"Returning {len(mdata)} data items")
+    return tuple(mdata)
 
-#         log.debug(f"{gurls}")
-#         final_gurls = []
-#         # TODO: maybe prefer language of gallery first?
-#         pref_lang = PLUGIN_CONFIG.get('preferred_language')
-#         if pref_lang:
-#             for t in gurls:
-#                 if pref_lang.lower() in t[0].lower():
-#                     final_gurls.insert(0, t)
-#                     continue
-#                 final_gurls.append(t)
-#         else:
-#             final_gurls = gurls
+@hpx.attach("Metadata.apply", trigger='filemetadata')
+def apply(datatuple):
+    mresults = []
+    applied = False
 
-#         for t, u in final_gurls:
-#             g_id, g_token = parse_url(u)
-#             if g_id and g_token:
-#                 mdata.append(hpx.command.MetadataData(
-#                     metadataitem=mitem,
-#                     title=t,
-#                     url=u,
-#                     data={
-#                         'gallery': [g_id, g_token],
-#                         'gallery_url': u,
-#                         }))
-#     log.info(f"Returning {len(mdata)} data items")
-#     return tuple(mdata)
+    for d in datatuple:
+        applied = apply_file_metadata(d.item, d.data['found'])
+        if applied:
+            mresults.append(hpx.command.MetadataResult(data=d, status=True))
+        else:
+            mresults.append(hpx.command.MetadataResult(data=d, status=False, reason="failed to apply data from file"))
+
+    return tuple(mresults)

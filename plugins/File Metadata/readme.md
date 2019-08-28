@@ -31,7 +31,7 @@ plugin:
 
 Name | Default | Description
 --- | --- | ---
-`characters_namespace` | `character` | which namespace to put the values in the CHARACTERS field in (applies to hdoujin)
+`characters_namespace` | `character` | which namespace to put the values in the CHARACTERS field into (applies to hdoujin)
 
 # Extending
 
@@ -46,6 +46,9 @@ Follow these steps to add support for more kind of files:
 7. Import your new `.py` file in `extractors.__init__`
 
 # Changelog
+
+- `2.0.0`
+    - The plugin will also now act as a regular metadata plugin, making it possible to retrieve metadata from files on-demand
 
 - `1.0.3`
     - Updated the eze handler to save uploaded date as published date
