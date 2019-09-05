@@ -41,6 +41,10 @@ Name | Default | Description
 
 # Changelog
 
+- `1.2.0`
+    - fixed title being qouted unconditionally
+    - retry the search with qouted title if keyword count exceeds 8
+
 - `1.1.0`
     - added several new options and fixed some errors
 

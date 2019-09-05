@@ -206,15 +206,13 @@ def query(itemtuple, login_site=URLS['eh']):
     log.info(f"Returning {len(mdata)} data items")
     return tuple(mdata)
 
-def title_search(title, ex=True, session=None):
+def title_search(title, ex=True, session=None, _times=0):
     "Searches on ehentai for galleries with given title, returns a list of (title, matching gallery urls)"
     eh_url = URLS['title_search']
     log.debug(f"searching with title: {title}")
     sq = PLUGIN_CONFIG.get("search_query")
 
     params = {f'f_{c}': '0' for c in DEFAULT_CATEGORIES}
-
-    title = f'"{title}"'
 
     try:
         sq = sq.format(title=title)
@@ -250,7 +248,19 @@ def title_search(title, ex=True, session=None):
         query=param_query
         )
     log.info(f"final url: {f_eh_url}")
-    return eh_page_results(f_eh_url, session=session)
+    r = eh_page_results(f_eh_url, session=session)
+
+    if not r and not _times:
+
+        kw = sq.split('"', 2) # if title was qouted, counts as 1 keyword
+        kw_count = max(len(kw) - 1, 1)
+        # this is pretty unreliable and won't detect qouted multi word tags
+        kw_count += len(" ".join(kw[-1].split()).split(' ')) - 1 # some magic
+
+        if kw_count > 8: # check if exceeds 8 keywords retry with quotes around title
+            r = title_search(f'"{title}"', ex, session, _times=_times+1)
+
+    return r
 
 def eh_page_results(eh_page_url, limit=None, session=None):
     "Opens eh page, parses for results, and then returns list of (title, url)"
