@@ -88,7 +88,9 @@ class Extractor:
                 with fs.open("r", **kw) as f:
                     for line in f.readlines():
                         l = line.strip()
-                        k, v = l.split(b':' if fs.inside_archive else ':', 1 )
+                        if isinstance(l, bytes):
+                            l = l.decode(encoding="utf-8", errors="ignore")
+                        k, v = l.split(':', 1 )
                         if k.strip():
                             d[k.strip()] = v.strip()
             else:

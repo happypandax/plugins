@@ -2,7 +2,7 @@
     "id": "e38e24e4-8ca8-420e-b52b-c75510097653",
     "shortname": "file-metadata",
     "name": "File Metadata",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "description": "Extracts and applies metadata from a file accompanying a gallery. Supports files produced from eze, e-hentai-downloader and hdoujin",
     "author": "Twiddly",
     "update_url": "https://github.com/happypandax/plugins/tree/master/plugins/File%20Metadata",
