@@ -47,6 +47,9 @@ Follow these steps to add support for more kind of files:
 
 # Changelog
 
+- `2.0.1`
+    - Fixed an issue where metadata files in archives would fail to be detected
+
 - `2.0.0`
     - The plugin will also now act as a regular metadata plugin, making it possible to retrieve metadata from files on-demand
 
