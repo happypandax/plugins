@@ -7,6 +7,12 @@ log = hpx.get_logger(__name__)
 class Eze(common.Extractor):
 
     def file_to_dict(self, fs):
+        """
+        A subclass can choose to override or extend this method.
+        Should return a dict with data from the file which will be passed to the extract method.
+        If the file is not supported or should be skipped, return None.
+        The parameter fs is the file in question.
+        """
         d = super().file_to_dict(fs)
         k = ('gallery_info',)
         if d and not all(map(lambda x: x in d, k)): # make sure all keys are present
@@ -17,6 +23,12 @@ class Eze(common.Extractor):
         return d
 
     def extract(self, filedata):
+        """
+        A subclass must implement this method.
+        Should populate a dict that looks like common_data (see common.py) and return it
+
+        filedata parameter is the dict created in the file_to_dict method
+        """
         d = {}
         filedata = filedata.get('gallery_info')
         if filedata:

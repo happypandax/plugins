@@ -50,7 +50,6 @@ def inited():
         with open(save_file, "rb") as f:
             user_dict = pickle.load(f)
         if user_dict:
-            log.info(str(user_dict))
             login(user_dict, {})
             if response is not None:
                 log.info("Successfully re-logged in")

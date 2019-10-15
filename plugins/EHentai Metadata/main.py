@@ -77,9 +77,9 @@ def metadata_info_eh():
     return hpx.command.MetadataInfo(
         identifier = "ehentai",
         batch = 25,
-        name = "EHentai",
+        name = "E-Hentai",
         parser = URLS_REGEX['eh_gallery'],
-        sites = ("www.e-hentai.org",),
+        sites = ("https://e-hentai.org",),
         description = "Fetch metadata from E-Hentai",
         models = (
             hpx.command.GetDatabaseModel("Gallery"),
@@ -93,7 +93,7 @@ def metadata_info_ex():
         batch = 25,
         name = "ExHentai",
         parser = URLS_REGEX['ex_gallery'],
-        sites = ("www.exhentai.org",),
+        sites = ("https://exhentai.org",),
         description = "Fetch metadata from ExHentai",
         models = (
             hpx.command.GetDatabaseModel("Gallery"),
@@ -129,7 +129,13 @@ def apply_ex(datatuple):
     return apply(datatuple)
 
 def query(itemtuple, login_site=URLS['eh']):
-    "Looks up on ehentai for matching items"
+    """
+    Called to query for candidates to extract metadata from.
+    Note that HPX will handle choosing which candidates to extract data from.
+    The attached handler should just return all the candidates found.
+
+    Looks up on ehentai for matching items
+    """
     mdata = []
 
     # get exhentai login session if applicable
@@ -274,7 +280,7 @@ def eh_page_results(eh_page_url, limit=None, session=None):
         )
     if session:
         req_props.session = session
-        log.debug(f"COOKIES: {session.cookies}")
+        log.debug(f"COOKIES: {session.cookies.keys()}")
     r = hpx.command.SingleGETRequest().request(eh_page_url, req_props)
     soup = BeautifulSoup(r.text, "html.parser")
     list_style = "compact"
@@ -311,6 +317,10 @@ def parse_url(url):
     return int(gallery_id), gallery_token
 
 def apply(datatuple):
+    """
+    Called to fetch and apply metadata to the given data items.
+    Remember to set the `status` property on the :class:`MetadataResult` object to `True` on a successful fetch.
+    """
     mresults = []
     applied = False
     eh_data = {
@@ -418,14 +428,14 @@ def format_metadata(gdata, item, urls_to_apply=None):
         if ns == 'language' and t != 'translated':
             lang = t
         elif ns == "artist":
-            for a in artists: # the artist extracted from the title likely has better capitalization, so choose that instead
+            for a in parsed_artists: # the artist extracted from the title likely has better capitalization, so choose that instead
                 if a.lower() == t.lower():
                     artists.add(a)
                     break
             else:
                 artists.add(t)
         elif ns == "group":
-            for c in circles: # the circle extracted from the title likely has better capitalization, so choose that instead
+            for c in parsed_circles: # the circle extracted from the title likely has better capitalization, so choose that instead
                 if c.lower() == t.lower():
                     circles.add(c)
                     break
