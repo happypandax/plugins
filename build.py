@@ -4,7 +4,7 @@ import pathlib
 from urllib.parse import quote
 
 readme = """
-##### In this repository resides plugins for HappyPanda X. If you wish to write a plugin for HPX head over to [the docs](https://happypandax.github.io/plugin.html#plugins).
+#### In this repository resides plugins for HappyPanda X. If you wish to write a plugin for HPX head over to [the docs](https://happypandax.github.io/plugin.html#plugins).
 
 ### How to download
 
