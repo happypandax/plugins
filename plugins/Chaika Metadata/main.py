@@ -15,7 +15,7 @@ log = hpx.get_logger("main")
 MATCH_URL_PREFIX = r"^(http\:\/\/|https\:\/\/)?(www\.)?" # http:// or https:// + www.
 MATCH_URL_END = r"\/?$"
 
-DEFAULT_DELAY = 0.5
+DEFAULT_DELAY = 1.5
 
 URLS_REGEX = {
     'gallery': MATCH_URL_PREFIX + r"(panda\.chaika\.moe\/(archive|gallery)\/[0-9]+)" + MATCH_URL_END,
@@ -72,7 +72,7 @@ def metadata_info():
         identifier = "chaika",
         name = "Panda.Chaika",
         parser = URLS_REGEX['gallery'],
-        sites = ("www.panda.chaika.moe",),
+        sites = ("https://panda.chaika.moe",),
         description = "Fetch metadata from Panda.Chaika",
         models = (
             hpx.command.GetDatabaseModel("Gallery"),
@@ -81,6 +81,11 @@ def metadata_info():
 
 @hpx.attach("Metadata.query", trigger="chaika")
 def query(itemtuple):
+    """
+    Called to query for candidates to extract metadata from.
+    Note that HPX will handle choosing which candidates to extract data from.
+    The attached handler should just return all the candidates found.
+    """
     log.info("Querying chaika for metadata")
     mdata = []
     for mitem in itemtuple:
@@ -146,6 +151,10 @@ def query(itemtuple):
 
 @hpx.attach("Metadata.apply", trigger="chaika")
 def apply(datatuple):
+    """
+    Called to fetch and apply metadata to the given data items.
+    Remember to set the `status` property on the :class:`MetadataResult` object to `True` on a successful fetch.
+    """
     log.info("Applying metadata from chaika")
     mresult = []
     

@@ -1,0 +1,15 @@
+{
+    "id": "dd86876d-4d4e-438e-bc2e-fbbb18e35742",
+    "shortname": "chaika-downloader",
+    "name": "Chaika Downloader",
+    "version": "1.0.0",
+    "description": "A plugin that enables downloading manga and doujinshi from panda.chaika.moe",
+    "author": "Twiddly",
+    "update_url": "https://github.com/happypandax/plugins/tree/master/plugins/Chaika%20Downloader",
+    "website": "https://github.com/happypandax/plugins/tree/master/plugins/Chaika%20Downloader",
+    "entry": "main.py",
+    "test": "test.py",
+    "require": [
+        "happypandax >= 0.12.0"
+    ]
+}
