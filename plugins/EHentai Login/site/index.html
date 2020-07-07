@@ -19,7 +19,7 @@ EHentai Metadata Plugin
         <li>Go on Console tab</li>
         <li>Write: document.cookie</li>
         <li>A line of values should appear that correspond to active cookies</li>
-        <li>Look for the ipb_member_id and ipb_pass_hash values</li>
+        <li>Look for the ipb_member_id, ipb_pass_hash and other values</li>
     </ol>
 </div>
 {% endblock %}
@@ -37,12 +37,20 @@ EHentai Metadata Plugin
     </div>
     <div class="field">
         <label>IPB Member ID</label>
-        <input type="text" name="ipb_member_id" placeholder="IPB Member ID">
+        <input type="text" name="ipb_member_id" placeholder="Required">
     </div>
     <div class="field">
         <label>IPB Pass Hash</label>
-        <input type="password" name="ipb_pass_hash" placeholder="IPB Pass Hash">
+        <input type="password" name="ipb_pass_hash" placeholder="Required">
     </div>
+    <div class="field">
+        <label>Additional</label>
+        <div class="ui compact message small">
+          <p>Comma-separated values: key_1=value_1, key_2=value2</p>
+        </div>
+        <input type="text" name="additional" placeholder="Optional">
+    </div>
+
     <div class="field">
         <div class="ui toggle checkbox">
             <input type="checkbox" name="exhentai" checked>

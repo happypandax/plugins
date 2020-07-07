@@ -8,7 +8,7 @@ function set_err_msg(msg) {
     document.querySelector("#error-msg").innerHTML = msg
 }
 
-function form_status(cls) {
+function form_status(cls, msg) {
     switch (cls) {
         case 'success':
             document.querySelector("form").classList.add("success")
@@ -17,7 +17,7 @@ function form_status(cls) {
             break
         case 'error':
             if (!document.querySelector("#error-msg").innerHTML)
-                set_err_msg("Failed to login")  
+                set_err_msg("Failed to login: " + msg.toString())
             document.querySelector("form").classList.add("error")
             document.querySelector("form").classList.remove("success")
             document.querySelector("form").classList.remove("warning")
@@ -55,7 +55,7 @@ function check_login(first_time) {
                     }
             } else {
                 if (!first_time) {
-                    form_status("error")
+                    form_status("error", fdata.status)
                 }
             }
         })
@@ -69,7 +69,7 @@ function on_login(e) {
     }
     for (var i in arr) {
         let x = arr[i]
-        if (x.name == 'ipb_member_id' || x.name == 'ipb_pass_hash') {
+        if ( ['ipb_member_id', 'ipb_pass_hash', 'additional'].includes(x.name)) {
             data[x.name] = x.value
         } else if (x.name == 'exhentai')
             data[x.name] = (x.value == 'on') ? true : false

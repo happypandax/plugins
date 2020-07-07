@@ -85,15 +85,25 @@ def login(userpass, options):
 
     ipb_member = userpass.get('ipb_member_id', "")
     ipb_pass = userpass.get('ipb_pass_hash', "")
-    if ipb_member and ipb_pass:
+    try:
+        if not ipb_member or not ipb_pass:
+            raise ValueError("Missing ipb_member_id or ipb_pass_hash")
 
         cookies = {}
-        # get user input
+
+        additional = userpass.get('additional', "")
+        if additional:
+            try:
+                additional = {k.strip():v.strip() for k, v in [x.strip().split('=', 1) for x in additional.split(',')] }
+                cookies.update(additional)
+            except:
+                raise ValueError("Failed to parse additional values")
+
         cookies.update({
             'ipb_member_id': ipb_member,
             'ipb_pass_hash': ipb_pass,
         })
-
+        
         # prepare request
         req_props = hpx.command.RequestProperties(
             session=True,
@@ -123,12 +133,12 @@ def login(userpass, options):
 
                 current_user_name = ipb_member
                 save_user_dict()
-            
+
         else:
             status_text = r.reason
 
-    else:
-        status_text = "No user credentials provided"
+    except ValueError as e:
+        status_text = str(e)
 
     return response
 
