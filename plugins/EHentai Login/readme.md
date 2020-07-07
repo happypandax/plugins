@@ -9,6 +9,9 @@ Replace `[webserver-host]` with wherever your HPX webserver is hosted at.
 
 # Changelog
 
+- `1.1.0`
+    - Added a new field for additional cookie values
+
 - `1.0.0`
     - Updated to reflect new changes in HPX v0.10.0
 
