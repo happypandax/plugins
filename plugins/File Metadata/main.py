@@ -158,6 +158,16 @@ def apply_metadata(data, gallery, options={}):
             gdata.urls = SetValue(gurls)
             log.debug("applied urls")
 
+    if data.get('times_read'):
+        gdata.times_read = SetValue(data['times_read'])
+        log.debug("applied times_read")
+
+        if data['times_read'] > 0:
+            gallery_id = gallery.id
+            page_id = gallery.last_page.id
+
+            GalleryProgress.update_progress(gallery_id, page_id)
+
     applied = hpx.command.UpdateItemData(gallery, gdata, options=options)
 
     log.debug(f"applied: {applied}")
