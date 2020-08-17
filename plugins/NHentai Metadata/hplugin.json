@@ -2,7 +2,7 @@
     "id": "7d68901f-8cef-4f3c-82b1-6e93f63ba00c",
     "shortname": "nhentai-metadata",
     "name": "NHentai Metadata",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "A plugin that can fetch metadata from nhentai.net",
     "author": "Twiddly",
     "update_url": "https://github.com/happypandax/plugins/tree/master/plugins/NHentai%20Metadata",

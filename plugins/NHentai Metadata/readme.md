@@ -31,5 +31,8 @@ Name | Default | Description
 
 # Changelog
     
+- `1.0.1`
+    - updated to reflect site changes where titles where not geting extracted
+    
 - `1.0.0`
     - first version

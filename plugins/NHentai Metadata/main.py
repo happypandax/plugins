@@ -260,7 +260,7 @@ def format_metadata(text, item, apply_url=False, gallery_url=None):
         parsed_text = None
         eng_title = info_div.find("h1")
         if eng_title:
-            eng_title = str(eng_title.string)
+            eng_title = str(eng_title.text)
             parsed_text = hpx.command.ItemTextParser(eng_title)
 
             parsed_title = parsed_text.extract_title()
@@ -271,7 +271,7 @@ def format_metadata(text, item, apply_url=False, gallery_url=None):
         
         jp_title = info_div.find("h2")
         if jp_title:
-            mdata['titles'].append((str(jp_title.string), 'japanese'))
+            mdata['titles'].append((str(jp_title.text), 'japanese'))
 
         parsed_artists = parsed_text.extract_artist() if parsed_text else []
         parsed_circles = parsed_text.extract_circle() if parsed_text else []
