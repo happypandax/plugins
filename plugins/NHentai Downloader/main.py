@@ -84,10 +84,12 @@ def download_query(item):
         log.info("parsing gallery info")
         info_div = soup.find("div", id="info")
         if info_div:
-            title_el = soup.find("h1")
+            title_el = soup.find("h1", class_="title")
             if title_el:
-                item.name = str(title_el.string)
-                log.info(f"found name of gallery: {item.name}")
+                title_name = soup.find("span", class_="pretty")
+                if title_name:
+                    item.name = str(title_name.string)
+                    log.info(f"found name of gallery: {item.name}")
         else:
             log.warning("couldn't find gallery info div")
 
