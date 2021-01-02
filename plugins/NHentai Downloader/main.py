@@ -58,7 +58,6 @@ def download_query(item):
     Called to query for resource URLs that should be downloaded.
     Note that HPX will handle the actual downloading part.
     The attached handler should just return all the URLs that should be downloaded in the form of .:class:`DownloadRequest` objects
-
     should return:
     a tuple of :class:`DownloadRequest` for all the URL resources that should be downloaded.
     Note that the download system is recursive, so if the URL resource matches a download handler (the same or a different one),
@@ -84,10 +83,12 @@ def download_query(item):
         log.info("parsing gallery info")
         info_div = soup.find("div", id="info")
         if info_div:
-            title_el = soup.find("h1")
+            title_el = soup.find("h1", class_="title")
             if title_el:
-                item.name = str(title_el.string)
-                log.info(f"found name of gallery: {item.name}")
+                title_name = soup.find("span", class_="pretty")
+                if title_name:
+                    item.name = str(title_name.string)
+                    log.info(f"found name of gallery: {item.name}")
         else:
             log.warning("couldn't find gallery info div")
 
@@ -141,7 +142,6 @@ def download_done(result):
     The handler should do any post-processing here (archive files, rename files or folders, delete extranous files and etc.).
     Remember to set the `status` property on the :class:`DownloadResult` object to `False` if the post-processing was a failure.
     Note that the handler should *not* import the file into HPX (if it's an item), that part will be taken care of by HPX
-
     should return:
     the same :class:`DownloadResult` that was provided to the handler, potentially modified on the 'path' or `status` and `reason` properties
     """
