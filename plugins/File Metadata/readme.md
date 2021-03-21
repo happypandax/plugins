@@ -47,6 +47,9 @@ Follow these steps to add support for more kind of files:
 
 # Changelog
 
+- `2.0.2`
+    - Improved error handling on incompatible detected files
+
 - `2.0.1`
     - Fixed an issue where metadata files in archives would fail to be detected
 

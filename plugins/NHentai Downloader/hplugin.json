@@ -1,15 +1,13 @@
 {
-    "id": "d2d70306-db03-4cc0-b9c6-b5b1f95d10fe",
-    "shortname": "nhentai-downloader",
-    "name": "NHentai Downloader",
-    "version": "1.0.0",
-    "description": "A plugin that enables downloading manga and doujinshi from nhentai.net",
-    "author": "Twiddly",
-    "update_url": "https://github.com/happypandax/plugins/tree/master/plugins/NHentai%20Downloader",
-    "website": "https://github.com/happypandax/plugins/tree/master/plugins/NHentai%20Downloader",
-    "entry": "main.py",
-    "test": "test.py",
-    "require": [
-        "happypandax >= 0.12.0"
-    ]
+  "id": "d2d70306-db03-4cc0-b9c6-b5b1f95d10fe",
+  "shortname": "nhentai-downloader",
+  "name": "NHentai Downloader",
+  "version": "1.0.1",
+  "description": "A plugin that enables downloading manga and doujinshi from nhentai.net",
+  "author": "Twiddly",
+  "update_url": "https://github.com/happypandax/plugins/tree/master/plugins/NHentai%20Downloader",
+  "website": "https://github.com/happypandax/plugins/tree/master/plugins/NHentai%20Downloader",
+  "entry": "main.py",
+  "test": "test.py",
+  "require": ["happypandax >= 0.12.0"]
 }

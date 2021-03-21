@@ -12,6 +12,9 @@ There's no available config options for this plugin
 - Torrents (waiting for HPX to support this)
 
 # Changelog
+
+- `1.0.1`
+    - fixed an issue where galleries would fail to download because the extracted title was invalid
     
 - `1.0.0`
     - first version
