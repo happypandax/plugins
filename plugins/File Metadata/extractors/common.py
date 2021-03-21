@@ -5,6 +5,9 @@ import typing
 
 log = hpx.get_logger(__name__)
 
+class IncompatibleFile(ValueError):
+    pass
+
 class DataType(enum.Flag):
     """
     The available extractors.
@@ -20,7 +23,7 @@ filetypes = ('.json', '.txt')
 filenames = {
     "info.json": DataType.eze | DataType.hdoujin,
     "info.txt": DataType.hdoujin | DataType.e_hentai_downloader,
-    }
+}
 
 common_data = {
     'titles': None, # [(title, language),...]
@@ -90,14 +93,13 @@ class Extractor:
                         l = line.strip()
                         if isinstance(l, bytes):
                             l = l.decode(encoding="utf-8", errors="ignore")
-                        k, v = l.split(':', 1 )
+                        k, v = l.split(':', 1)
                         if k.strip():
                             d[k.strip()] = v.strip()
             else:
                 raise NotImplementedError(f"{fs.ext} filetype not supported yet")
-        except Exception: # Bad, I know, but too lazy
-            log.warning("An error occured while trying to parse file into a dict")
-            raise ValueError
+        except Exception as e: # Bad, I know, but too lazy
+            raise IncompatibleFile(e)
         return d
 
     def extract(self, filedata: dict) -> dict:

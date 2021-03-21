@@ -25,8 +25,8 @@ def get_common_data(datatypes, fpath):
             if ex:
                 try:
                     fdata = ex.file_to_dict(fpath)
-                except ValueError:
-                    log.info(f"Skipping {datatype}")
+                except common.IncompatibleFile as e:
+                    log.info(f"Skipping incompatible file for {datatype}: {str(e)}")
                     continue
                 if fdata:
                     log.info(f"{datatype} matched!")
@@ -49,8 +49,8 @@ ParodyNameData = hpx.command.ParodyNameData
 CircleData = hpx.command.CircleData
 CategoryData = hpx.command.CategoryData
 UrlData = hpx.command.UrlData
-NamespaceTagData= hpx.command.NamespaceTagData
-TagData= hpx.command.TagData
+NamespaceTagData = hpx.command.NamespaceTagData
+TagData = hpx.command.TagData
 NamespaceData = hpx.command.NamespaceData
 
 def apply_metadata(data, gallery, options={}):
@@ -118,7 +118,7 @@ def apply_metadata(data, gallery, options={}):
     if data.get('category'):
         gdata.category = SetValue(CategoryData(name=data['category']))
         log.debug("applied category")
-    
+
     if data.get('language'):
         gdata.language = SetValue(LanguageData(name=data['language']))
         log.debug("applied language")
@@ -173,7 +173,7 @@ def apply_metadata(data, gallery, options={}):
     log.debug(f"applied: {applied}")
 
     return applied
-    
+
 @hpx.subscribe("init")
 def inited():
     common.plugin_config.update(hpx.get_plugin_config())
@@ -218,16 +218,16 @@ def parse(path, gallery):
     f = has_file_metadata(path)
     return apply_file_metadata(gallery, f)
 
-##### --- 
+##### ---
 
 @hpx.attach("Metadata.info")
 def metadata_info():
     return hpx.command.MetadataInfo(
-        identifier = "filemetadata",
-        name = "File Metadata",
-        description = "Extracts and applies metadata from a file accompanying a gallery",
-        sites= ("eze", "E-Hentai-Downloader", "HDoujinDownloader"),
-        models = (
+        identifier="filemetadata",
+        name="File Metadata",
+        description="Extracts and applies metadata from a file accompanying a gallery",
+        sites=("eze", "E-Hentai-Downloader", "HDoujinDownloader"),
+        models=(
             hpx.command.GetDatabaseModel("Gallery"),
         )
     )
@@ -254,7 +254,7 @@ def query(itemtuple):
                 metadataitem=mitem,
                 title=item.preferred_title.name if item.preferred_title else '',
                 data={
-                    'found':found_files,
+                    'found': found_files,
                 }))
 
     log.info(f"Returning {len(mdata)} data items")
