@@ -26,8 +26,8 @@ Name | Version | Description
 [**EHentai Downloader**](https://github.com/happypandax/plugins/tree/master/plugins/EHentai%20Downloader) | `1.0.0` | *A plugin that enables downloading manga and doujinshi from E-Hentai & ExHentai*
 [**EHentai Login**](https://github.com/happypandax/plugins/tree/master/plugins/EHentai%20Login) | `1.1.0` | *A plugin that can login to E-Hentai & ExHentai*
 [**EHentai Metadata**](https://github.com/happypandax/plugins/tree/master/plugins/EHentai%20Metadata) | `1.2.1` | *A plugin that can fetch metadata from E-Hentai & ExHentai*
-[**File Metadata**](https://github.com/happypandax/plugins/tree/master/plugins/File%20Metadata) | `2.0.1` | *Extracts and applies metadata from a file accompanying a gallery. Supports files produced from eze, e-hentai-downloader and hdoujin*
-[**NHentai Downloader**](https://github.com/happypandax/plugins/tree/master/plugins/NHentai%20Downloader) | `1.0.0` | *A plugin that enables downloading manga and doujinshi from nhentai.net*
-[**NHentai Metadata**](https://github.com/happypandax/plugins/tree/master/plugins/NHentai%20Metadata) | `1.0.0` | *A plugin that can fetch metadata from nhentai.net*
+[**File Metadata**](https://github.com/happypandax/plugins/tree/master/plugins/File%20Metadata) | `2.0.2` | *Extracts and applies metadata from a file accompanying a gallery. Supports files produced from eze, e-hentai-downloader and hdoujin*
+[**NHentai Downloader**](https://github.com/happypandax/plugins/tree/master/plugins/NHentai%20Downloader) | `1.0.1` | *A plugin that enables downloading manga and doujinshi from nhentai.net*
+[**NHentai Metadata**](https://github.com/happypandax/plugins/tree/master/plugins/NHentai%20Metadata) | `1.0.1` | *A plugin that can fetch metadata from nhentai.net*
 
 
