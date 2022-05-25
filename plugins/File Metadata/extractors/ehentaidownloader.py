@@ -1,11 +1,13 @@
 import __hpx__ as hpx
+
 from . import common
 
 log = hpx.get_logger(__name__)
 
+
 class EHentaiDownloader(common.Extractor):
 
-    def file_to_dict(self, fs):
+    def file_to_dict( self, fs ):
         """
         A subclass can choose to override or extend this method.
         Should return a dict with data from the file which will be passed to the extract method.
@@ -14,13 +16,13 @@ class EHentaiDownloader(common.Extractor):
 
         File is formatted weirdly so we just return {linenumber : line}
         """
-        d = {}
+        d = { }
         log.debug(f"File ext: {fs.ext}")
-        kw = {}
+        kw = { }
         if not fs.inside_archive:
             kw['encoding'] = "utf-8"
         with fs.open("r", **kw) as f:
-            for num, line  in enumerate(f.readlines(), 1):
+            for num, line in enumerate(f.readlines(), 1):
                 if isinstance(line, bytes):
                     line = line.decode("utf-8")
                 d[num] = line
@@ -30,14 +32,14 @@ class EHentaiDownloader(common.Extractor):
             d = None
         return d
 
-    def extract(self, filedata):
+    def extract( self, filedata ):
         """
         A subclass must implement this method.
         Should populate a dict that looks like common_data (see common.py) and return it
 
         filedata parameter is the dict created in the file_to_dict method
         """
-        d = {}
+        d = { }
         if filedata:
             log.debug("Expecting e-hentai downloader metadata file")
             for linenum in sorted(filedata):
@@ -55,14 +57,14 @@ class EHentaiDownloader(common.Extractor):
                     d['category'] = common.capitalize_text(line.lower())
                     continue
 
-                if line.startswith("> "): # tags
-                    line = line[2:] # remove >
+                if line.startswith("> "):  # tags
+                    line = line[2:]  # remove >
                     ns, tags = line.split(':', 1)
                     tags = tags.split(",")
-                    d.setdefault("tags", {})[ns.strip()] = [t.strip() for t in tags]
+                    d.setdefault("tags", { })[ns.strip()] = [t.strip() for t in tags]
                     continue
 
-                if linenum in (1, 2, 3): # most likely a title or url, must be last because maybe it wasn't included
+                if linenum in (1, 2, 3):  # most likely a title or url, must be last because maybe it wasn't included
                     # ensure
                     if not filedata.get(3, "").startswith("http"):
                         continue
@@ -76,5 +78,6 @@ class EHentaiDownloader(common.Extractor):
                         d.setdefault("titles", []).append((parsed_title[0] if parsed_title else line, title_lang))
                     continue
         return d
+
 
 common.register_extractor(EHentaiDownloader, common.DataType.e_hentai_downloader)

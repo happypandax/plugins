@@ -1,18 +1,19 @@
 # main.py
-import __hpx__ as hpx
-import regex
-import arrow
 import datetime
+import html
 import os
 import urllib
-import html
 
+import __hpx__ as hpx
+import arrow
+import regex
 from bs4 import BeautifulSoup
-from PIL import Image, ImageChops
+
+import happypanda.core.commands.item_cmd
 
 log = hpx.get_logger("main")
 
-MATCH_URL_PREFIX = r"^(http\:\/\/|https\:\/\/)?(www\.)?" # http:// or https:// + www.
+MATCH_URL_PREFIX = r"^(http\:\/\/|https\:\/\/)?(www\.)?"  # http:// or https:// + www.
 MATCH_URL_END = r"\/?$"
 
 DEFAULT_DELAY = 1.5
@@ -22,51 +23,55 @@ IDENTIFIER = "nhentai"
 URLS = {
     'nh': 'https://nhentai.net',
     'title_search': "https://nhentai.net/search/?q={title}"
-}
+    }
 
-HEADERS = {'user-agent':"Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0"}
+HEADERS = { 'user-agent': "Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0" }
 
 PLUGIN_CONFIG = {
-    'filename_search': False, # use the filename/folder-name for searching instead of gallery title
-    'remove_namespaces': True, # remove superfluous namespaces like 'artists', 'languages' and 'groups' because they are handled specially in HPX
-    'gallery_results_limit': 10, # maximum amount of galleries to return
-    'blacklist_tags': [], # tags to ignore when updating tags
-    'add_gallery_url': True, # add nhentai url to gallery
-    'preferred_language': "english", # preferred gallery langauge (in gallery title) to extract from if multiple galleries were found, set empty string for default
-    'search_query': "{title}", # the search query, '{title}' will be replaced with the gallery title, use double curly brackets to escape a bracket
-}
+    'filename_search': False,  # use the filename/folder-name for searching instead of gallery title
+    'remove_namespaces': True,  # remove superfluous namespaces like 'artists', 'languages' and 'groups' because they are handled specially in HPX
+    'gallery_results_limit': 10,  # maximum amount of galleries to return
+    'blacklist_tags': [],  # tags to ignore when updating tags
+    'add_gallery_url': True,  # add nhentai url to gallery
+    'preferred_language': "english",  # preferred gallery langauge (in gallery title) to extract from if multiple galleries were found, set empty string for default
+    'search_query': "{title}",  # the search query, '{title}' will be replaced with the gallery title, use double curly brackets to escape a bracket
+    }
+
 
 @hpx.subscribe("init")
 def inited():
     PLUGIN_CONFIG.update(hpx.get_plugin_config())
 
     # set default delay values if not set
-    delays = hpx.get_setting("network", "delays", {})
+    delays = hpx.get_setting("network", "delays", { })
     for u in (URLS['nh'],):
         if u not in delays:
             log.info(f"Setting delay on {u} requests to {DEFAULT_DELAY}")
             delays[u] = DEFAULT_DELAY
             hpx.update_setting("network", "delays", delays)
 
+
 @hpx.subscribe('config_update')
-def config_update(cfg):
+def config_update( cfg ):
     PLUGIN_CONFIG.update(cfg)
+
 
 @hpx.attach("Metadata.info")
 def metadata_info():
     return hpx.command.MetadataInfo(
-        identifier = IDENTIFIER,
-        name = "nhentai",
-        parser = MATCH_URL_PREFIX + r"(nhentai\.net\/g\/[0-9]{3,10})" + MATCH_URL_END,
-        sites = ("https://nhentai.net",),
-        description = "Fetch metadata from nhentai.net",
-        models = (
+        identifier=IDENTIFIER,
+        name="nhentai",
+        parser=MATCH_URL_PREFIX + r"(nhentai\.net\/g\/[0-9]{3,10})" + MATCH_URL_END,
+        sites=("https://nhentai.net",),
+        description="Fetch metadata from nhentai.net",
+        models=(
             hpx.command.GetDatabaseModel("Gallery"),
+            )
         )
-    )
+
 
 @hpx.attach("Metadata.query", trigger=IDENTIFIER)
-def query(itemtuple):
+def query( itemtuple ):
     """
     Called to query for candidates to extract metadata from.
     Note that HPX will handle choosing which candidates to extract data from.
@@ -77,12 +82,12 @@ def query(itemtuple):
     for mitem in itemtuple:
         item = mitem.item
         url = mitem.url
-        gurls = [] # tuple of (title, url)
+        gurls = []  # tuple of (title, url)
         # url was provided
         if url:
             log.info(f"url provided: {url} for {item}")
             gurls.append((url, url))
-        else: # manually search for id
+        else:  # manually search for id
             log.info(f"url not provided for {item}")
             # search with title
             i_title = ""
@@ -95,7 +100,7 @@ def query(itemtuple):
                     i_title = os.path.splitext(i_title)[0]
             else:
                 if item.titles:
-                    i_title = item.titles[0].name # make user choice?
+                    i_title = item.titles[0].name  # make user choice?
             if i_title:
                 gurls = title_search(i_title)
 
@@ -119,32 +124,35 @@ def query(itemtuple):
         for t, u in final_gurls:
             g_id = parse_url(u)
             if g_id:
-                mdata.append(hpx.command.MetadataData(
-                    metadataitem = mitem,
+                mdata.append(hpx.command.MetadataQuery(
+                    metadataitem=mitem,
                     title=t,
                     url=u,
                     data={
                         'id': g_id,
                         'gallery_url': u,
-                        }))
+                        }
+                    )
+                    )
     return tuple(mdata)
 
+
 @hpx.attach("Metadata.apply", trigger=IDENTIFIER)
-def apply(datatuple):
+def apply( datatuple ):
     """
     Called to fetch and apply metadata to the given data items.
     Remember to set the `status` property on the :class:`MetadataResult` object to `True` on a successful fetch.
     """
     log.info("Applying metadata from nhentai")
     mresult = []
-    
+
     for mdata in datatuple:
         applied = False
         # prepare request
         req_props = hpx.command.RequestProperties(
             headers=HEADERS,
             )
-        
+
         gallery_url = mdata.data['gallery_url']
 
         r = hpx.command.SingleGETRequest().request(gallery_url, req_props)
@@ -161,7 +169,8 @@ def apply(datatuple):
             log.warning(f"Request returned bad status: {r.status_code}")
     return tuple(mresult)
 
-def title_search(title, _times=0):
+
+def title_search( title, _times=0 ):
     "Searches on nhentai for galleries with given title, returns a list of (title, matching gallery urls)"
     search_url = URLS['title_search']
     log.debug(f"searching with title: {title}")
@@ -186,12 +195,13 @@ def title_search(title, _times=0):
     if not r and not _times:
         title = regex.sub(r"\(.+?\)|\[.+?\]", "", title)
         title = " ".join(title.split())
-        r = title_search(title, _times=_times+1)
+        r = title_search(title, _times=_times + 1)
     return r
 
-def page_results(page_url, limit=None):
+
+def page_results( page_url, limit=None ):
     "Opens nhentai page, parses for results, and then returns list of (title, url)"
-    found_urls = [] # title, url
+    found_urls = []  # title, url
     if limit is None:
         limit = PLUGIN_CONFIG.get("gallery_results_limit")
 
@@ -217,7 +227,8 @@ def page_results(page_url, limit=None):
         log.debug(f"HTML: {r.text}")
     return found_urls
 
-def parse_url(url):
+
+def parse_url( url ):
     "Extracts the gallery id from url"
     gallery_id = None
 
@@ -229,13 +240,14 @@ def parse_url(url):
     return gallery_id
 
 
-def capitalize_text(text):
+def capitalize_text( text ):
     """
     better str.capitalize
     """
     return " ".join(x.capitalize() for x in text.strip().split())
 
-def format_metadata(text, item, apply_url=False, gallery_url=None):
+
+def format_metadata( text, item, apply_url=False, gallery_url=None ):
     """
     Formats metadata to look like this for apply_metadata:
     data = {
@@ -249,7 +261,7 @@ def format_metadata(text, item, apply_url=False, gallery_url=None):
         'urls': None # [url, ...]
     }
     """
-    mdata = {}
+    mdata = { }
 
     soup = BeautifulSoup(text, "html.parser")
     info_div = soup.find("div", id="info")
@@ -268,7 +280,7 @@ def format_metadata(text, item, apply_url=False, gallery_url=None):
                 parsed_title = parsed_title[0]
 
             mdata['titles'].append((parsed_title or eng_title, 'english'))
-        
+
         jp_title = info_div.find("h2")
         if jp_title:
             mdata['titles'].append((str(jp_title.text), 'japanese'))
@@ -280,7 +292,7 @@ def format_metadata(text, item, apply_url=False, gallery_url=None):
         circles = set()
         parodies = set()
 
-        lang = "japanese" # default language
+        lang = "japanese"  # default language
 
         tags_containers = info_div.find("section", id="tags")
         if tags_containers:
@@ -290,7 +302,7 @@ def format_metadata(text, item, apply_url=False, gallery_url=None):
                 ns = list(tag_container.stripped_strings)[0]
                 if not ns:
                     continue
-                ns = ns[:-1] # remove colon
+                ns = ns[:-1]  # remove colon
                 ns = ns.lower()
                 tags = [list(x.stripped_strings)[0] for x in tag_container.findAll("a", class_="tag")]
 
@@ -300,7 +312,7 @@ def format_metadata(text, item, apply_url=False, gallery_url=None):
                     for t in tags:
                         if blacklist_tags and nstag(t) in blacklist_tags:
                             continue
-                        for a in parsed_artists: # the artist extracted from the title likely has better capitalization, so choose that instead
+                        for a in parsed_artists:  # the artist extracted from the title likely has better capitalization, so choose that instead
                             if a.lower() == t.lower():
                                 artists.add(a)
                                 break
@@ -310,7 +322,7 @@ def format_metadata(text, item, apply_url=False, gallery_url=None):
                     for t in tags:
                         if blacklist_tags and nstag(t) in blacklist_tags:
                             continue
-                        for a in parsed_circles: # the circle extracted from the title likely has better capitalization, so choose that instead
+                        for a in parsed_circles:  # the circle extracted from the title likely has better capitalization, so choose that instead
                             if a.lower() == t.lower():
                                 circles.add(a)
                                 break
@@ -322,7 +334,7 @@ def format_metadata(text, item, apply_url=False, gallery_url=None):
                             continue
                         parodies.add(t)
                 elif ns == "categories":
-                    t = tags[0] # only supports one
+                    t = tags[0]  # only supports one
                     if not (blacklist_tags and nstag(t) in blacklist_tags):
                         mdata['category'] = capitalize_text(t)
                 elif ns == "languages":
@@ -331,17 +343,17 @@ def format_metadata(text, item, apply_url=False, gallery_url=None):
                             continue
                         if t in ('translated'):
                             continue
-                        lang = t # only supports one
+                        lang = t  # only supports one
 
                 if PLUGIN_CONFIG.get("remove_namespaces") and ns in extranous_namespaces:
-                    if ns == 'languages': # keep other tags
+                    if ns == 'languages':  # keep other tags
                         tags = [x for x in tags if x != lang]
                     else:
                         continue
 
                 # add rest as tags
                 if tags:
-                    mdata.setdefault('tags', {})
+                    mdata.setdefault('tags', { })
                     for t in tags:
                         if blacklist_tags and nstag(t) in blacklist_tags:
                             continue
@@ -356,14 +368,14 @@ def format_metadata(text, item, apply_url=False, gallery_url=None):
             artists.union(set(parsed_artists))
         if not circles:
             circles.union(set(parsed_circles))
-        
+
         if parodies:
             mdata['parodies'] = parodies
 
         if artists:
             a_circles = []
             for a in artists:
-                a_circles.append((a, tuple(circles))) # assign circles to each artist
+                a_circles.append((a, tuple(circles)))  # assign circles to each artist
             mdata['artists'] = a_circles
 
         if apply_url:
@@ -372,6 +384,7 @@ def format_metadata(text, item, apply_url=False, gallery_url=None):
     log.debug(f"formatted data: {mdata}")
 
     return mdata
+
 
 GalleryData = hpx.command.GalleryData
 LanguageData = hpx.command.LanguageData
@@ -383,11 +396,12 @@ ParodyNameData = hpx.command.ParodyNameData
 CircleData = hpx.command.CircleData
 CategoryData = hpx.command.CategoryData
 UrlData = hpx.command.UrlData
-NamespaceTagData= hpx.command.NamespaceTagData
-TagData= hpx.command.TagData
+NamespaceTagData = hpx.command.NamespaceTagData
+TagData = hpx.command.TagData
 NamespaceData = hpx.command.NamespaceData
 
-def apply_metadata(data, gallery, options):
+
+def apply_metadata( data, gallery, options ):
     """
     data = {
         'titles': None, # [(title, language),...]
@@ -452,14 +466,14 @@ def apply_metadata(data, gallery, options):
     if data.get('category'):
         gdata.category = CategoryData(name=data['category'])
         log.debug("applied category")
-    
+
     if data.get('language'):
         gdata.language = LanguageData(name=data['language'])
         log.debug("applied language")
 
     if isinstance(data.get('tags'), (dict, list)):
         if isinstance(data['tags'], list):
-            data['tags'] = {None: data['tags']}
+            data['tags'] = { None: data['tags'] }
         gnstags = []
         for ns, tags in data['tags'].items():
             if ns is not None:
@@ -467,7 +481,7 @@ def apply_metadata(data, gallery, options):
             for t in tags:
                 t = t.strip()
                 if t:
-                    kw = {'tag': TagData(name=t)}
+                    kw = { 'tag': TagData(name=t) }
                     if ns:
                         kw['namespace'] = NamespaceData(name=ns)
                     gnstags.append(NamespaceTagData(**kw))
@@ -490,7 +504,7 @@ def apply_metadata(data, gallery, options):
             gdata.urls = gurls
             log.debug("applied urls")
 
-    applied = hpx.command.UpdateItemData(gallery, gdata, options=options)
+    applied = happypanda.core.commands.item_cmd.UpdateItemData(gallery, gdata, options=options)
 
     log.debug(f"applied: {applied}")
 

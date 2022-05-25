@@ -1,7 +1,8 @@
 # main.py
+import json
+
 import __hpx__ as hpx
 import regex
-import json
 from bs4 import BeautifulSoup
 
 DownloadRequest = hpx.command.DownloadRequest
@@ -11,7 +12,7 @@ log = hpx.get_logger("main")
 EH_IDENTIFIER = "ehentai"
 EX_IDENTIFIER = "exhentai"
 
-HEADERS = {'user-agent':"Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0"}
+HEADERS = { 'user-agent': "Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0" }
 DEFAULT_DELAY = 5
 
 URLS = {
@@ -21,10 +22,10 @@ URLS = {
     'ex_api': 'https://exhentai.org/api.php',
     'e_archiver': 'https://e-hentai.org/archiver.php?gid={gallery_id}&token={gallery_token}&or={archiver_key}',
     'ex_archiver': 'https://exhentai.org/archiver.php?gid={gallery_id}&token={gallery_token}&or={archiver_key}',
-}
+    }
 
 
-def website_url_regex_gen(domain, path_regex=None, variable_port=False, variable_tld=False, trailing_slash=True, end=True, trailing_fragment=True):
+def website_url_regex_gen( domain, path_regex=None, variable_port=False, variable_tld=False, trailing_slash=True, end=True, trailing_fragment=True ):
     """
     Generates a regex suitable for a specific domain
     """
@@ -45,45 +46,51 @@ def website_url_regex_gen(domain, path_regex=None, variable_port=False, variable
         rgx += "$"
     return rgx
 
+
 @hpx.subscribe("init")
 def inited():
     # set default delay values if not set
-    delays = hpx.get_setting("network", "delays", {})
+    delays = hpx.get_setting("network", "delays", { })
     for u in (URLS['ex'], URLS['eh'], "https://api.e-hentai.org", URLS['ex_api']):
         if u not in delays:
             log.info(f"Setting delay on {u} requests to {DEFAULT_DELAY}")
             delays[u] = DEFAULT_DELAY
             hpx.update_setting("network", "delays", delays)
 
+
 @hpx.attach("Download.info")
 def eh_download_info():
     return hpx.command.DownloadInfo(
-        identifier = EH_IDENTIFIER,
-        name = "E-Hentai",
-        parser = website_url_regex_gen("e-hentai.org", path_regex=r"g\/[0-9]{3,10}\/[0-9a-zA-Z]{3,15}", trailing_slash=True, variable_tld=False, trailing_fragment=True, end=True),
-        sites = ("https://e-hentai.org",),
-        description = "Download manga and doujinshi from e-hentai.org",
-    )
+        identifier=EH_IDENTIFIER,
+        name="E-Hentai",
+        parser=website_url_regex_gen("e-hentai.org", path_regex=r"g\/[0-9]{3,10}\/[0-9a-zA-Z]{3,15}", trailing_slash=True, variable_tld=False, trailing_fragment=True, end=True),
+        sites=("https://e-hentai.org",),
+        description="Download manga and doujinshi from e-hentai.org",
+        )
+
 
 @hpx.attach("Download.info")
 def ex_download_info():
     return hpx.command.DownloadInfo(
-        identifier = EX_IDENTIFIER,
-        name = "ExHentai",
-        parser = website_url_regex_gen("exhentai.org", path_regex=r"g\/[0-9]{3,10}\/[0-9a-zA-Z]{3,15}", trailing_slash=True, variable_tld=False, trailing_fragment=True, end=True),
-        sites = ("https://exhentai.org",),
-        description = "Download manga and doujinshi from exhentai.org",
-    )
+        identifier=EX_IDENTIFIER,
+        name="ExHentai",
+        parser=website_url_regex_gen("exhentai.org", path_regex=r"g\/[0-9]{3,10}\/[0-9a-zA-Z]{3,15}", trailing_slash=True, variable_tld=False, trailing_fragment=True, end=True),
+        sites=("https://exhentai.org",),
+        description="Download manga and doujinshi from exhentai.org",
+        )
+
 
 @hpx.attach("Download.query", trigger=EH_IDENTIFIER)
-def eh_download_query(item):
+def eh_download_query( item ):
     return download_query(item, False)
 
+
 @hpx.attach("Download.query", trigger=EX_IDENTIFIER)
-def ex_download_query(item):
+def ex_download_query( item ):
     return download_query(item, True)
 
-def download_query(item, is_exhentai):
+
+def download_query( item, is_exhentai ):
     """
     Called to query for resource URLs that should be downloaded.
     Note that HPX will handle the actual downloading part.
@@ -118,7 +125,7 @@ def download_query(item, is_exhentai):
         eh_data = {
             'method': 'gdata',
             'gidlist': [[gid, gtoken]],
-        }
+            }
         req_props = hpx.command.RequestProperties(
             headers=HEADERS,
             json=eh_data,
@@ -146,10 +153,11 @@ def download_query(item, is_exhentai):
                                         downloaditem=item,
                                         url=gdata['thumb'],
                                         is_thumbnail=True,
-                                        properties=hpx.command.RequestProperties(method=hpx.Method.GET, headers=HEADERS, session=login_session), # we need to use the same session
-                                        ))
+                                        properties=hpx.command.RequestProperties(method=hpx.Method.GET, headers=HEADERS, session=login_session),  # we need to use the same session
+                                        )
+                                    )
                                 thumbnail_req = True
-                                                    
+
                             log.info(f"found archiver key for gallery {(gid, gtoken)}")
                             a_key = gdata['archiver_key']
                             a_url = URLS['ex_archiver' if is_exhentai else 'e_archiver'].format(gallery_id=gid, gallery_token=gtoken, archiver_key=a_key)
@@ -168,13 +176,16 @@ def download_query(item, is_exhentai):
                             if r.ok and "Key missing, or incorrect key provided" not in r.text:
                                 soup = BeautifulSoup(r.text, "html.parser")
                                 dp_url = soup.find("p", id="continue")
-                                if dp_url and dp_url.a: # finally
+                                if dp_url and dp_url.a:  # finally
                                     download_requests.append(
                                         DownloadRequest(
                                             downloaditem=item,
                                             url=dp_url.a['href'] + '?start=1',
-                                            properties=hpx.command.RequestProperties(method=hpx.Method.GET, headers=HEADERS, session=login_session), # we need to use the same session
-                                            filename=item.name.strip()+'.zip'))
+                                            properties=hpx.command.RequestProperties(method=hpx.Method.GET, headers=HEADERS, session=login_session),
+                                            # we need to use the same session
+                                            filename=item.name.strip() + '.zip'
+                                            )
+                                        )
                                     archive_req = True
                             else:
                                 log.warning(f"got invalid key page or bad status: {r.status_code}")
@@ -193,8 +204,9 @@ def download_query(item, is_exhentai):
         log.info(f"was able to prepare {len(download_requests)} requests")
     return tuple(download_requests)
 
+
 @hpx.attach("Download.done", trigger=[EX_IDENTIFIER, EH_IDENTIFIER])
-def download_done(result):
+def download_done( result ):
     """
     Called when downloading of all :class:`DownloadRequest` for a specific :class:`DownloadItem` has finished.
     The handler should do any post-processing here (archive files, rename files or folders, delete extranous files and etc.).
@@ -208,7 +220,8 @@ def download_done(result):
     log.info(f"download of archive was successful for {result.downloaditem.name}")
     return result
 
-def parse_url(url):
+
+def parse_url( url ):
     "Parses url into a tuple of gallery id and token"
     gallery_id = None
     gallery_token = None

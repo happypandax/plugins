@@ -1,29 +1,17 @@
 # main.py
 import __hpx__ as hpx
-import pickle
-import os
-
 from bs4 import BeautifulSoup
 
 log = hpx.get_logger("main")
 
-
-
-current_user_name = ""
-status_text = ""
-response = None
-user_dict = None
-
-save_file = os.path.join(hpx.constants.current_dir, '.info')
-
 default_delay = 8
 
-HEADERS = {'user-agent':"Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0"}
+HEADERS = {'user-agent': "Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0"}
 
-match_url_prefix = r"^(http\:\/\/|https\:\/\/)?(www\.)?" # http:// or https:// + www.
+match_url_prefix = r"^(http\:\/\/|https\:\/\/)?(www\.)?"  # http:// or https:// + www.
 match_url_end = r"\/?$"
 
-url_regex =  match_url_prefix + r"((exhentai|(g\.)?e-hentai)\.org)" + match_url_end
+url_regex = match_url_prefix + r"((exhentai|(g\.)?e-hentai)\.org)" + match_url_end
 
 MAIN_URLS = {
     'eh': "https://e-hentai.org",
@@ -33,7 +21,9 @@ MAIN_URLS = {
 URLS = MAIN_URLS
 URLS.update({
     'login': "https://e-hentai.org/home.php"
-})
+}
+)
+
 
 @hpx.subscribe("init")
 def inited():
@@ -45,43 +35,61 @@ def inited():
             delays[u] = default_delay
             hpx.update_setting("network", "delays", delays)
 
-    # retrieve saved user info
-    if os.path.exists(save_file):
-        with open(save_file, "rb") as f:
-            user_dict = pickle.load(f)
-        if user_dict:
-            login(user_dict, {})
-            if response is not None:
+    if 'logged_in' not in hpx.store:
+        hpx.store.logged_in = False
+    if 'status_text' not in hpx.store:
+        hpx.store.status_text = ''
+    if 'response' not in hpx.store:
+        hpx.store.response = None
+    if 'user' not in hpx.store:
+        hpx.store.user = {}
+    if 'username' not in hpx.store:
+        hpx.store.username = ''
+
+    if hpx.constants.is_main_process:
+        # retrieve saved user info
+        userpass = hpx.store.user
+        if userpass and not hpx.constants.debug:
+            r = login(userpass, {})
+            if r is not None:
                 log.info("Successfully re-logged in")
+
+
 
 @hpx.subscribe("disable")
 def disabled():
-    save_user_dict()
+    pass
+
 
 @hpx.subscribe("remove")
 def removed():
     pass
 
+@hpx.attach("message")
+def message(msg: dict):
+    t = msg.get("type")
+    if t == "login":
+        login(msg['data'])
+    elif t == 'check-login':
+        pass
+    return {"logged_in": hpx.store.logged_in, "status": hpx.store.status_text}
+
 @hpx.attach("Login.info")
 def login_info():
     return hpx.command.LoginInfo(
-        identifier = "ehentai",
-        name = "EHentai",
-        parser = url_regex,
-        sites = ("www.e-hentai.org", "www.exhentai.org"),
-        description = "Login to E-Hentai & ExHentai",
+        identifier="ehentai",
+        name="EHentai",
+        parser=url_regex,
+        sites=("www.e-hentai.org", "www.exhentai.org"),
+        description="Login to E-Hentai & ExHentai",
     )
 
-@hpx.attach("Login.login", trigger="ehentai")
-def login(userpass, options):
-    global current_user_name
-    global status_text
-    global response
-    global user_dict
 
-    user_dict = userpass
+@hpx.attach("Login.login", trigger="ehentai")
+def login(userpass: dict, options=None):
     response = None
-    current_user_name = ""
+    status_text = ''
+    current_user_name = ''
 
     ipb_member = userpass.get('ipb_member_id', "")
     ipb_pass = userpass.get('ipb_pass_hash', "")
@@ -94,7 +102,7 @@ def login(userpass, options):
         additional = userpass.get('additional', "")
         if additional:
             try:
-                additional = {k.strip():v.strip() for k, v in [x.strip().split('=', 1) for x in additional.split(',')] }
+                additional = {k.strip(): v.strip() for k, v in [x.strip().split('=', 1) for x in additional.split(',')]}
                 cookies.update(additional)
             except:
                 raise ValueError("Failed to parse additional values")
@@ -102,14 +110,15 @@ def login(userpass, options):
         cookies.update({
             'ipb_member_id': ipb_member,
             'ipb_pass_hash': ipb_pass,
-        })
-        
+        }
+        )
+
         # prepare request
         req_props = hpx.command.RequestProperties(
             session=True,
             cookies=cookies,
             headers=HEADERS
-            )
+        )
 
         req = hpx.command.SingleGETRequest()
 
@@ -130,9 +139,8 @@ def login(userpass, options):
                         status_text = "Could not access ExHentai"
 
                 response = r
-
+                hpx.store.user = userpass
                 current_user_name = ipb_member
-                save_user_dict()
 
         else:
             status_text = r.reason
@@ -140,25 +148,34 @@ def login(userpass, options):
     except ValueError as e:
         status_text = str(e)
 
+    hpx.store.status_text = status_text
+    hpx.store.response = response
+    logged_in = hpx.store.logged_in = response is not None
+    hpx.store.username = current_user_name
+    log.debug(f"Login: {logged_in} (status: {status_text})")
+
     return response
+
 
 @hpx.attach("Login.status", trigger="ehentai")
 def status(options):
-    return status_text
+    return hpx.store.status_text
+
 
 @hpx.attach("Login.logged_in", trigger="ehentai")
 def logged_in(options):
-    if response:
-        return True
-    return False
+    return hpx.store.logged_in
+
 
 @hpx.attach("Login.response", trigger="ehentai")
 def response_(options):
-    return response
+    return hpx.store.response
+
 
 @hpx.attach("Login.current_user", trigger="ehentai")
 def current_user(options):
-    return current_user_name
+    return hpx.store.username
+
 
 def check_access(r, ex=False):
     msg = ""
@@ -173,19 +190,11 @@ def check_access(r, ex=False):
 
     if not bad_access and not ex:
         soup = BeautifulSoup(text, "html.parser")
-        if soup.find("div", class_="homebox"): # we have access to home.php
+        if soup.find("div", class_="homebox"):  # we have access to home.php
             pass
-        elif soup.find("form"): # login page
+        elif soup.find("form"):  # login page
             bad_access = True
             msg = "Wrong credentials!"
     if msg:
         log.info(f"MSG: {msg}")
     return bad_access, msg
-
-def save_user_dict():
-    global user_dict
-
-    # save user info
-    if user_dict:
-        with open(save_file, "wb") as f:
-            user_dict = pickle.dump(user_dict, f)

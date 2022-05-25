@@ -2,7 +2,7 @@
     "id": "d9b1d111-7250-4083-9efb-356fabbeada7",
     "shortname": "ehentai-login",
     "name": "EHentai Login",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "A plugin that can login to E-Hentai & ExHentai",
     "author": "Twiddly",
     "site_folder": "site/",
@@ -11,6 +11,6 @@
     "entry": "main.py",
     "test": "test.py",
     "require": [
-        "happypandax >= 0.10.0"
+        "happypandax >= 0.14.0"
     ]
 }

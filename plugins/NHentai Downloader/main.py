@@ -8,10 +8,11 @@ DownloadRequest = hpx.command.DownloadRequest
 log = hpx.get_logger("main")
 
 IDENTIFIER = "nhentai"
-HEADERS = {'user-agent':"Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0"}
+HEADERS = { 'user-agent': "Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0" }
 DEFAULT_DELAY = 1.5
 
-def website_url_regex_gen(domain, path_regex=None, variable_port=False, variable_tld=False, trailing_slash=True, end=True, trailing_fragment=True):
+
+def website_url_regex_gen( domain, path_regex=None, variable_port=False, variable_tld=False, trailing_slash=True, end=True, trailing_fragment=True ):
     """
     Generates a regex suitable for a specific domain
     """
@@ -32,28 +33,31 @@ def website_url_regex_gen(domain, path_regex=None, variable_port=False, variable
         rgx += "$"
     return rgx
 
+
 @hpx.subscribe("init")
 def inited():
     # set default delay if not set
-    delays = hpx.get_setting("network", "delays", {})
+    delays = hpx.get_setting("network", "delays", { })
     delay_url = "https://nhentai.net/g/"
     if delay_url not in delays:
         log.info(f"Setting delay on {delay_url} requests to {DEFAULT_DELAY}")
         delays[delay_url] = DEFAULT_DELAY
         hpx.update_setting("network", "delays", delays)
 
+
 @hpx.attach("Download.info")
 def download_info():
     return hpx.command.DownloadInfo(
-        identifier = IDENTIFIER,
-        name = "NHentai",
-        parser = website_url_regex_gen("nhentai.net", path_regex=r"g\/[0-9]{3,10}", trailing_slash=True, variable_tld=False, trailing_fragment=True, end=True),
-        sites = ("https://nhentai.net",),
-        description = "Download manga and doujinshi from nhentai.net",
-    )
+        identifier=IDENTIFIER,
+        name="NHentai",
+        parser=website_url_regex_gen("nhentai.net", path_regex=r"g\/[0-9]{3,10}", trailing_slash=True, variable_tld=False, trailing_fragment=True, end=True),
+        sites=("https://nhentai.net",),
+        description="Download manga and doujinshi from nhentai.net",
+        )
+
 
 @hpx.attach("Download.query", trigger=IDENTIFIER)
-def download_query(item):
+def download_query( item ):
     """
     Called to query for resource URLs that should be downloaded.
     Note that HPX will handle the actual downloading part.
@@ -114,7 +118,7 @@ def download_query(item):
                 # https://t.nhentai.net/galleries/1498842/2t.jpg
                 # and the real image at
                 # https://i.nhentai.net/galleries/1498842/2.jpg
-                url_parts = l.img['data-src'] # img is lazy loaded so src isn't available
+                url_parts = l.img['data-src']  # img is lazy loaded so src isn't available
                 if url_parts:
                     url_parts = url_parts.split('/')
                     img_id = url_parts[-2]
@@ -136,8 +140,9 @@ def download_query(item):
         log.info(f"was able to prepare requests for {len(download_requests)} images")
     return tuple(download_requests)
 
+
 @hpx.attach("Download.done", trigger=IDENTIFIER)
-def download_done(result):
+def download_done( result ):
     """
     Called when downloading of all :class:`DownloadRequest` for a specific :class:`DownloadItem` has finished.
     The handler should do any post-processing here (archive files, rename files or folders, delete extranous files and etc.).
