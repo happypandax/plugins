@@ -1,11 +1,13 @@
 import __hpx__ as hpx
+
 from . import common
 
 log = hpx.get_logger(__name__)
 
+
 class HDoujin(common.Extractor):
 
-    def file_to_dict(self, fs):
+    def file_to_dict( self, fs ):
         """
         A subclass can choose to override or extend this method.
         Should return a dict with data from the file which will be passed to the extract method.
@@ -18,11 +20,11 @@ class HDoujin(common.Extractor):
                 k = ('TITLE', 'ARTIST')
             else:
                 k = ('manga_info',)
-            if not all(map(lambda x: x in d, k)): # make sure all keys are present
+            if not all(map(lambda x: x in d, k)):  # make sure all keys are present
                 d = None
             else:
                 if fs.ext.lower() == '.txt':
-                    new_d = {}
+                    new_d = { }
                     for k, v in d.items():
                         if k == "AUTHOR/CIRCLE":
                             k = "CIRCLE"
@@ -32,14 +34,14 @@ class HDoujin(common.Extractor):
                     d = d.get('manga_info')
         return d
 
-    def extract(self, filedata):
+    def extract( self, filedata ):
         """
         A subclass must implement this method.
         Should populate a dict that looks like common_data (see common.py) and return it
 
         filedata parameter is the dict created in the file_to_dict method
         """
-        d = {}
+        d = { }
         if filedata:
             log.debug("Expecting hdoujin metadata file")
             mtitle = filedata.get('title')
@@ -66,7 +68,7 @@ class HDoujin(common.Extractor):
             if mtags:
                 if isinstance(mtags, str):
                     mtags = mtags.split(',')
-                    nstag = {}
+                    nstag = { }
                     for x in mtags:
                         t = x.split(':', 1)
                         if len(t) == 2:
@@ -75,17 +77,17 @@ class HDoujin(common.Extractor):
                         mtags = nstag
 
                 if isinstance(mtags, dict):
-                    d['tags'] = {}
+                    d['tags'] = { }
                     for ns, t in mtags.items():
                         d['tags'].setdefault(common.capitalize_text(ns), t)
                 else:
-                    d['tags'] = {None: mtags} # None for no namespace
+                    d['tags'] = { None: mtags }  # None for no namespace
 
             mcharacters = filedata.get("characters")
             if mcharacters:
                 if isinstance(mcharacters, str):
                     mcharacters = mcharacters.split(',')
-                d.setdefault('tags', {})[common.plugin_config.get('characters_namespace') or 'characters'] = mcharacters
+                d.setdefault('tags', { })[common.plugin_config.get('characters_namespace') or 'characters'] = mcharacters
 
             mparody = filedata.get("parody")
             if mparody:
@@ -104,5 +106,6 @@ class HDoujin(common.Extractor):
                 d.setdefault('urls', []).append(msource)
 
         return d
+
 
 common.register_extractor(HDoujin, common.DataType.hdoujin)

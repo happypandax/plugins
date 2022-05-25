@@ -2,22 +2,21 @@
 import __hpx__ as hpx
 import regex
 
-from bs4 import BeautifulSoup
-
 DownloadRequest = hpx.command.DownloadRequest
 
 log = hpx.get_logger("main")
 
 IDENTIFIER = "chaika"
-HEADERS = {'user-agent':"Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0"}
+HEADERS = { 'user-agent': "Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0" }
 DEFAULT_DELAY = 0.5
 
 URLS = {
     'ch': 'https://panda.chaika.moe',
     'gallery_api': 'https://panda.chaika.moe/jsearch?gallery=',
-}
+    }
 
-def website_url_regex_gen(domain, path_regex=None, variable_port=False, variable_tld=False, trailing_slash=True, end=True, trailing_fragment=True):
+
+def website_url_regex_gen( domain, path_regex=None, variable_port=False, variable_tld=False, trailing_slash=True, end=True, trailing_fragment=True ):
     """
     Generates a regex suitable for a specific domain
     """
@@ -38,28 +37,31 @@ def website_url_regex_gen(domain, path_regex=None, variable_port=False, variable
         rgx += "$"
     return rgx
 
+
 @hpx.subscribe("init")
 def inited():
     # set default delay if not set
-    delays = hpx.get_setting("network", "delays", {})
+    delays = hpx.get_setting("network", "delays", { })
     delay_url = URLS['ch']
     if delay_url not in delays:
         log.info(f"Setting delay on {delay_url} requests to {DEFAULT_DELAY}")
         delays[delay_url] = DEFAULT_DELAY
         hpx.update_setting("network", "delays", delays)
 
+
 @hpx.attach("Download.info")
 def download_info():
     return hpx.command.DownloadInfo(
-        identifier = IDENTIFIER,
-        name = "Chaika",
-        parser = website_url_regex_gen("panda.chaika.moe", path_regex=r"(gallery|archive)\/[0-9]{3,15}", trailing_slash=True, variable_tld=False, trailing_fragment=True, end=True),
-        sites = ("https://panda.chaika.moe",),
-        description = "Download manga and doujinshi from  panda.chaika.moe",
-    )
+        identifier=IDENTIFIER,
+        name="Chaika",
+        parser=website_url_regex_gen("panda.chaika.moe", path_regex=r"(gallery|archive)\/[0-9]{3,15}", trailing_slash=True, variable_tld=False, trailing_fragment=True, end=True),
+        sites=("https://panda.chaika.moe",),
+        description="Download manga and doujinshi from  panda.chaika.moe",
+        )
+
 
 @hpx.attach("Download.query", trigger=IDENTIFIER)
-def download_query(item):
+def download_query( item ):
     """
     Called to query for resource URLs that should be downloaded.
     Note that HPX will handle the actual downloading part.
@@ -88,7 +90,7 @@ def download_query(item):
 
     if url_type == 'gallery':
         log.info(f"url was a gallery url, retrieving archive urls")
-        req = hpx.command.SingleGETRequest().request(URLS['gallery_api']+str(gid), req_props)
+        req = hpx.command.SingleGETRequest().request(URLS['gallery_api'] + str(gid), req_props)
         if req.ok:
             log.info("request was successful")
 
@@ -101,10 +103,9 @@ def download_query(item):
                     item.name = title
 
                 for a in a_urls:
-                    download_urls.append(URLS['ch']+a['download'])
+                    download_urls.append(URLS['ch'] + a['download'])
     else:
-        download_urls.append(URLS['ch']+f"/archive/{gid}/download/")
-
+        download_urls.append(URLS['ch'] + f"/archive/{gid}/download/")
 
     download_requests = []
 
@@ -117,8 +118,9 @@ def download_query(item):
         log.info(f"was able to prepare requests for {len(download_requests)} urls")
     return tuple(download_requests)
 
+
 @hpx.attach("Download.done", trigger=IDENTIFIER)
-def download_done(result):
+def download_done( result ):
     """
     Called when downloading of all :class:`DownloadRequest` for a specific :class:`DownloadItem` has finished.
     The handler should do any post-processing here (archive files, rename files or folders, delete extranous files and etc.).
@@ -132,7 +134,8 @@ def download_done(result):
     log.info(f"download of archive was successful for {result.downloaditem.name}")
     return result
 
-def parse_url(url):
+
+def parse_url( url ):
     "Parses url into a tuple of gallery/archive and id"
     gallery_id = None
     stype = "gallery"

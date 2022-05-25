@@ -1,12 +1,15 @@
-import __hpx__ as hpx
 import enum
 import json
 import typing
 
+import __hpx__ as hpx
+
 log = hpx.get_logger(__name__)
+
 
 class IncompatibleFile(ValueError):
     pass
+
 
 class DataType(enum.Flag):
     """
@@ -17,48 +20,52 @@ class DataType(enum.Flag):
     hdoujin = enum.auto()
     e_hentai_downloader = enum.auto()
 
+
 # The filetypes to look for, no duplicates, only add if necessary
 filetypes = ('.json', '.txt')
 # Which filetype belongs to which extractor, use inclusive OR '|' to combine multiple extractors
 filenames = {
     "info.json": DataType.eze | DataType.hdoujin,
     "info.txt": DataType.hdoujin | DataType.e_hentai_downloader,
-}
+    }
 
 common_data = {
-    'titles': None, # [(title, language),...]
-    'artists': None, # [(artist, (circle, circle, ..)),...]
-    'parodies': None, # [parody, ...]
+    'titles': None,  # [(title, language),...]
+    'artists': None,  # [(artist, (circle, circle, ..)),...]
+    'parodies': None,  # [parody, ...]
     'category': None,
-    'tags': None, # [tag, tag, tag, ..] or {ns:[tag, tag, tag, ...]}
-    'pub_date': None, # DateTime object or Arrow object
+    'tags': None,  # [tag, tag, tag, ..] or {ns:[tag, tag, tag, ...]}
+    'pub_date': None,  # DateTime object or Arrow object
     'language': None,
-    'urls': None # [url, ...]
-}
+    'urls': None  # [url, ...]
+    }
 
 plugin_config = {
-    'characters_namespace': 'character', # hdoujin, which namespace to put the values in the CHARACTERS field in
-}
+    'characters_namespace': 'character',  # hdoujin, which namespace to put the values in the CHARACTERS field in
+    }
 
-extractors = {}
+extractors = { }
 
-def capitalize_text(text):
+
+def capitalize_text( text ):
     """
     better str.capitalize
     """
     return " ".join(x.capitalize() for x in text.strip().split())
 
-def register_extractor(cls, type):
+
+def register_extractor( cls, type ):
     assert issubclass(cls, Extractor)
     assert isinstance(type, DataType)
     extractors[type] = cls()
+
 
 class Extractor:
     """
     Base extractor
     """
 
-    def file_to_dict(self, fs: hpx.command.CoreFS) -> typing.Union[dict, None]:
+    def file_to_dict( self, fs: hpx.command.CoreFS ) -> typing.Union[dict, None]:
         """
         A subclass can choose to override or extend this method.
         Should return a dict with data from the file which will be passed to the extract method.
@@ -79,9 +86,9 @@ class Extractor:
         NotImplementedError will be raised if file is neither json or txt file.
         """
         try:
-            d = {}
+            d = { }
             log.debug(f"File ext: {fs.ext}")
-            kw = {}
+            kw = { }
             if not fs.inside_archive:
                 kw['encoding'] = 'utf-8'
             if fs.ext.lower() == '.json':
@@ -98,11 +105,11 @@ class Extractor:
                             d[k.strip()] = v.strip()
             else:
                 raise NotImplementedError(f"{fs.ext} filetype not supported yet")
-        except Exception as e: # Bad, I know, but too lazy
+        except Exception as e:  # Bad, I know, but too lazy
             raise IncompatibleFile(e)
         return d
 
-    def extract(self, filedata: dict) -> dict:
+    def extract( self, filedata: dict ) -> dict:
         """
         A subclass must implement this method.
         Should populate a dict that looks like common_data (see above) and return it

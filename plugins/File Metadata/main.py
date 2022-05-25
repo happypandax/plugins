@@ -1,25 +1,28 @@
-import __hpx__ as hpx
-import os
-import arrow
 import datetime
 import html
-import extractors
+import os
+
+import __hpx__ as hpx
+import arrow
+
+import happypanda.core.commands.item_cmd
 from extractors import common
 
 log = hpx.get_logger(__name__)
 
 options = {
-}
+    }
 
-def get_common_data(datatypes, fpath):
+
+def get_common_data( datatypes, fpath ):
     assert isinstance(datatypes, common.DataType)
-    d = {}
+    d = { }
     fpath = hpx.command.CoreFS(fpath)
 
     for datatype in common.DataType:
         if datatype & datatypes:
             log.info(f"Attempting with {datatype}")
-            md = {}
+            md = { }
 
             ex = common.extractors.get(datatype, None)
             if ex:
@@ -38,6 +41,7 @@ def get_common_data(datatypes, fpath):
                 break
     return d
 
+
 SetValue = hpx.command.Set
 GalleryData = hpx.command.GalleryData
 LanguageData = hpx.command.LanguageData
@@ -53,7 +57,8 @@ NamespaceTagData = hpx.command.NamespaceTagData
 TagData = hpx.command.TagData
 NamespaceData = hpx.command.NamespaceData
 
-def apply_metadata(data, gallery, options={}):
+
+def apply_metadata( data, gallery, options={ } ):
     """
     data = {
         'titles': None, # [(title, language),...]
@@ -125,7 +130,7 @@ def apply_metadata(data, gallery, options={}):
 
     if isinstance(data.get('tags'), (dict, list)):
         if isinstance(data['tags'], list):
-            data['tags'] = {None: data['tags']}
+            data['tags'] = { None: data['tags'] }
         gnstags = []
         for ns, tags in data['tags'].items():
             if ns is not None:
@@ -135,7 +140,7 @@ def apply_metadata(data, gallery, options={}):
             for t in tags:
                 t = t.strip()
                 if t:
-                    kw = {'tag': TagData(name=t)}
+                    kw = { 'tag': TagData(name=t) }
                     if ns:
                         kw['namespace'] = NamespaceData(name=ns)
                     gnstags.append(NamespaceTagData(**kw))
@@ -168,24 +173,27 @@ def apply_metadata(data, gallery, options={}):
 
             GalleryProgress.update_progress(gallery_id, page_id)
 
-    applied = hpx.command.UpdateItemData(gallery, gdata, options=options)
+    applied = happypanda.core.commands.item_cmd.UpdateItemData(gallery, gdata, options=options)
 
     log.debug(f"applied: {applied}")
 
     return applied
 
+
 @hpx.subscribe("init")
 def inited():
-    common.plugin_config.update(hpx.get_plugin_config())
+    common.plugin_config.update_tasks(hpx.get_plugin_config())
+
 
 @hpx.subscribe('config_update')
-def config_update(cfg):
-    common.plugin_config.update(cfg)
+def config_update( cfg ):
+    common.plugin_config.update_tasks(cfg)
 
-def has_file_metadata(path):
+
+def has_file_metadata( path ):
     fs = hpx.command.CoreFS(path)
 
-    contents = {x: os.path.split(x)[1].lower() for x in fs.contents(corefs=False) if x.lower().endswith(common.filetypes)}
+    contents = { x: os.path.split(x)[1].lower() for x in fs.contents(corefs=False) if x.lower().endswith(common.filetypes) }
     log.debug(f"Contents for {fs.path}:")
     log.debug(f"{tuple(contents.values())}")
 
@@ -198,7 +206,8 @@ def has_file_metadata(path):
 
     return found_files
 
-def apply_file_metadata(gallery, found_files):
+
+def apply_file_metadata( gallery, found_files ):
     applied = False
     cdata = common.common_data.copy()
     for dtypes, fpath in found_files:
@@ -206,17 +215,19 @@ def apply_file_metadata(gallery, found_files):
         d = get_common_data(dtypes, fpath)
         if d:
             applied = True
-            cdata.update(d)
+            cdata.update_tasks(d)
 
     if applied:
         apply_metadata(cdata, gallery)
 
     return applied
 
+
 @hpx.attach("GalleryFS.parse_metadata_file")
-def parse(path, gallery):
+def parse( path, gallery ):
     f = has_file_metadata(path)
     return apply_file_metadata(gallery, f)
+
 
 ##### ---
 
@@ -229,11 +240,12 @@ def metadata_info():
         sites=("eze", "E-Hentai-Downloader", "HDoujinDownloader"),
         models=(
             hpx.command.GetDatabaseModel("Gallery"),
+            )
         )
-    )
+
 
 @hpx.attach("Metadata.query", trigger='filemetadata')
-def query(itemtuple):
+def query( itemtuple ):
     "Looks up files for matching items"
     mdata = []
 
@@ -250,18 +262,21 @@ def query(itemtuple):
         if found_files:
             log.debug(f"{found_files}")
 
-            mdata.append(hpx.command.MetadataData(
+            mdata.append(hpx.command.MetadataQuery(
                 metadataitem=mitem,
                 title=item.preferred_title.name if item.preferred_title else '',
                 data={
                     'found': found_files,
-                }))
+                    }
+                )
+                )
 
     log.info(f"Returning {len(mdata)} data items")
     return tuple(mdata)
 
+
 @hpx.attach("Metadata.apply", trigger='filemetadata')
-def apply(datatuple):
+def apply( datatuple ):
     mresults = []
     applied = False
 

@@ -1,25 +1,26 @@
 # main.py
-import __hpx__ as hpx
-import regex
-import arrow
 import datetime
+import html
 import os
 import urllib
-import html
 
+import __hpx__ as hpx
+import arrow
+import regex
 from bs4 import BeautifulSoup
-from PIL import Image, ImageChops
+
+import happypanda.core.commands.item_cmd
 
 log = hpx.get_logger("main")
 
-MATCH_URL_PREFIX = r"^(http\:\/\/|https\:\/\/)?(www\.)?" # http:// or https:// + www.
+MATCH_URL_PREFIX = r"^(http\:\/\/|https\:\/\/)?(www\.)?"  # http:// or https:// + www.
 MATCH_URL_END = r"\/?$"
 
 DEFAULT_DELAY = 1.5
 
 URLS_REGEX = {
     'gallery': MATCH_URL_PREFIX + r"(panda\.chaika\.moe\/(archive|gallery)\/[0-9]+)" + MATCH_URL_END,
-}
+    }
 
 URLS = {
     'ch': 'https://panda.chaika.moe',
@@ -29,58 +30,64 @@ URLS = {
     'archive_api': 'https://panda.chaika.moe/jsearch?archive=',
     'hash_api': 'https://panda.chaika.moe/jsearch?sha1=',
     'title_search': "https://panda.chaika.moe/galleries/?title={title}&tags=&category=&provider=&uploader=&rating_from=&rating_to=&filesize_from=&filesize_to=&filecount_from=&filecount_to=&sort=posted&asc_desc=desc&apply="
-}
+    }
 
-HEADERS = {'user-agent':"Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0"}
+HEADERS = { 'user-agent': "Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0" }
 
 PLUGIN_CONFIG = {
-    'filename_search': False, # use the filename/folder-name for searching instead of gallery title
-    'remove_namespaces': True, # remove superfluous namespaces like 'artist', 'language' and 'group' because they are handled specially in HPX
-    'gallery_results_limit': 10, # maximum amount of galleries to return
-    'blacklist_tags': [], # tags to ignore when updating tags
-    'add_gallery_url': True, # add ehentai url to gallery
-    'preferred_language': "english", # preferred gallery langauge (in gallery title) to extract from if multiple galleries were found, set empty string for default
-}
+    'filename_search': False,  # use the filename/folder-name for searching instead of gallery title
+    'remove_namespaces': True,  # remove superfluous namespaces like 'artist', 'language' and 'group' because they are handled specially in HPX
+    'gallery_results_limit': 10,  # maximum amount of galleries to return
+    'blacklist_tags': [],  # tags to ignore when updating tags
+    'add_gallery_url': True,  # add ehentai url to gallery
+    'preferred_language': "english",  # preferred gallery langauge (in gallery title) to extract from if multiple galleries were found, set empty string for default
+    }
+
 
 @hpx.subscribe("init")
 def inited():
     PLUGIN_CONFIG.update(hpx.get_plugin_config())
 
     # set default delay values if not set
-    delays = hpx.get_setting("network", "delays", {})
+    delays = hpx.get_setting("network", "delays", { })
     for u in (URLS['ch'],):
         if u not in delays:
             log.info(f"Setting delay on {u} requests to {DEFAULT_DELAY}")
             delays[u] = DEFAULT_DELAY
             hpx.update_setting("network", "delays", delays)
 
+
 @hpx.subscribe('config_update')
-def config_update(cfg):
+def config_update( cfg ):
     PLUGIN_CONFIG.update(cfg)
+
 
 @hpx.subscribe("disable")
 def disabled():
     pass
 
+
 @hpx.subscribe("remove")
 def removed():
     pass
 
+
 @hpx.attach("Metadata.info")
 def metadata_info():
     return hpx.command.MetadataInfo(
-        identifier = "chaika",
-        name = "Panda.Chaika",
-        parser = URLS_REGEX['gallery'],
-        sites = ("https://panda.chaika.moe",),
-        description = "Fetch metadata from Panda.Chaika",
-        models = (
+        identifier="chaika",
+        name="Panda.Chaika",
+        parser=URLS_REGEX['gallery'],
+        sites=("https://panda.chaika.moe",),
+        description="Fetch metadata from Panda.Chaika",
+        models=(
             hpx.command.GetDatabaseModel("Gallery"),
+            )
         )
-    )
+
 
 @hpx.attach("Metadata.query", trigger="chaika")
-def query(itemtuple):
+def query( itemtuple ):
     """
     Called to query for candidates to extract metadata from.
     Note that HPX will handle choosing which candidates to extract data from.
@@ -91,12 +98,12 @@ def query(itemtuple):
     for mitem in itemtuple:
         item = mitem.item
         url = mitem.url
-        gurls = [] # tuple of (title, url)
+        gurls = []  # tuple of (title, url)
         # url was provided
         if url:
             log.info(f"url provided: {url} for {item}")
             gurls.append((url, url))
-        else: # manually search for id
+        else:  # manually search for id
             log.info(f"url not provided for {item}")
             # search with title
             i_title = ""
@@ -110,7 +117,7 @@ def query(itemtuple):
                     i_title = os.path.splitext(i_title)[0]
             else:
                 if item.titles:
-                    i_title = item.titles[0].name # make user choice
+                    i_title = item.titles[0].name  # make user choice
             if i_title:
                 gurls = title_search(i_title)
 
@@ -138,33 +145,36 @@ def query(itemtuple):
         for t, u in final_gurls:
             g_type, g_id = parse_url(u)
             if g_type and g_id:
-                mdata.append(hpx.command.MetadataData(
-                    metadataitem = mitem,
+                mdata.append(hpx.command.MetadataQuery(
+                    metadataitem=mitem,
                     title=t,
                     url=u,
                     data={
                         'type': g_type,
                         'id': g_id,
                         'gallery_url': u,
-                        }))
+                        }
+                    )
+                    )
     return tuple(mdata)
 
+
 @hpx.attach("Metadata.apply", trigger="chaika")
-def apply(datatuple):
+def apply( datatuple ):
     """
     Called to fetch and apply metadata to the given data items.
     Remember to set the `status` property on the :class:`MetadataResult` object to `True` on a successful fetch.
     """
     log.info("Applying metadata from chaika")
     mresult = []
-    
+
     for mdata in datatuple:
         applied = False
         # prepare request
         req_props = hpx.command.RequestProperties(
             headers=HEADERS,
             )
-        
+
         api_url = URLS['archive_api'] if mdata.data['type'] == 'archive' else URLS['gallery_api']
         api_url += str(mdata.data['id'])
 
@@ -183,7 +193,8 @@ def apply(datatuple):
         log.info(f"Applied: {applied}")
     return tuple(mresult)
 
-def title_search(title, session=None, _times=0):
+
+def title_search( title, session=None, _times=0 ):
     "Searches on chaika for galleries with given title, returns a list of (title, matching gallery urls)"
     search_url = URLS['title_search']
     log.debug(f"searching with title: {title}")
@@ -195,10 +206,11 @@ def title_search(title, session=None, _times=0):
     if not r and not _times:
         title = regex.sub(r"\(.+?\)|\[.+?\]", "", title)
         title = " ".join(title.split())
-        r = title_search(title, session, _times=_times+1)
+        r = title_search(title, session, _times=_times + 1)
     return r
 
-def page_results(page_url, limit=None, session=None):
+
+def page_results( page_url, limit=None, session=None ):
     "Opens chaika page, parses for results, and then returns list of (title, url)"
     found_urls = []
     if limit is None:
@@ -216,14 +228,15 @@ def page_results(page_url, limit=None, session=None):
     results = soup.findAll("tr", class_="result-list", limit=limit)
     results = [r.findAll('td')[1] for r in results]
     # str(x.a.string)
-    found_urls = [(str(x.a.string), URLS['ch'] + x.a['href']) for x in results] # title, url
+    found_urls = [(str(x.a.string), URLS['ch'] + x.a['href']) for x in results]  # title, url
 
     if not found_urls:
         log.warning(f"No results found on url: {page_url}")
         log.debug(f"HTML: {r.text}")
     return found_urls
 
-def parse_url(url):
+
+def parse_url( url ):
     "Parses url into a tuple of gallery/archive and id"
     gallery_id = None
     stype = "gallery"
@@ -239,13 +252,15 @@ def parse_url(url):
 
     return stype, int(gallery_id)
 
-def capitalize_text(text):
+
+def capitalize_text( text ):
     """
     better str.capitalize
     """
     return " ".join(x.capitalize() for x in text.strip().split())
 
-def format_metadata(gdata, item, apply_url=False, gallery_url=None):
+
+def format_metadata( gdata, item, apply_url=False, gallery_url=None ):
     """
     Formats metadata to look like this for apply_metadata:
     data = {
@@ -259,12 +274,12 @@ def format_metadata(gdata, item, apply_url=False, gallery_url=None):
         'urls': None # [url, ...]
     }
     """
-    mdata = {}
+    mdata = { }
 
     mdata['titles'] = []
 
     parsed_text = hpx.command.ItemTextParser(gdata['title'])
-    
+
     parsed_title = parsed_text.extract_title()
     if parsed_title:
         parsed_title = parsed_title[0]
@@ -272,12 +287,11 @@ def format_metadata(gdata, item, apply_url=False, gallery_url=None):
 
     mdata['titles'].append((gdata['title_jpn'], 'japanese'))
 
-
     mdata['category'] = gdata['category']
     if gdata['posted']:
         mdata['pub_date'] = arrow.Arrow.fromtimestamp(gdata['posted'])
 
-    lang = "japanese" # default language
+    lang = "japanese"  # default language
 
     artists = set()
     circles = set()
@@ -287,7 +301,7 @@ def format_metadata(gdata, item, apply_url=False, gallery_url=None):
     parsed_circles = parsed_text.extract_circle()
 
     extranous_namespaces = ("artist", "parody", "group", "language")
-    mdata['tags'] = {}
+    mdata['tags'] = { }
 
     for nstag in gdata['tags']:
         onstag = nstag
@@ -305,14 +319,14 @@ def format_metadata(gdata, item, apply_url=False, gallery_url=None):
         if ns == 'language' and t != 'translated':
             lang = t
         elif ns == "artist":
-            for a in artists: # the artist extracted from the title likely has better capitalization, so choose that instead
+            for a in artists:  # the artist extracted from the title likely has better capitalization, so choose that instead
                 if a.lower() == t.lower():
                     artists.add(a)
                     break
             else:
                 artists.add(t)
         elif ns == "group":
-            for c in circles: # the circle extracted from the title likely has better capitalization, so choose that instead
+            for c in circles:  # the circle extracted from the title likely has better capitalization, so choose that instead
                 if c.lower() == t.lower():
                     circles.add(c)
                     break
@@ -320,32 +334,33 @@ def format_metadata(gdata, item, apply_url=False, gallery_url=None):
                 circles.add(t)
         elif ns == "parody":
             parodies.add(t)
-        
+
         if not (PLUGIN_CONFIG.get("remove_namespaces") and ns in extranous_namespaces):
             mdata['tags'].setdefault(ns, []).append(t)
         else:
             log.debug(f"removing namespace {ns}")
-        
+
     log.debug(f"tags: {mdata['tags']}")
 
     mdata['language'] = lang
-    
+
     if parodies:
         mdata['parodies'] = parodies
 
     if artists:
         a_circles = []
         for a in artists:
-            a_circles.append((a, tuple(circles))) # assign circles to each artist
+            a_circles.append((a, tuple(circles)))  # assign circles to each artist
         mdata['artists'] = a_circles
 
     if apply_url:
         if gdata.get('gallery', False):
-            mdata['urls'] = [URLS['gallery']+f"{gdata['gallery']}/"]
+            mdata['urls'] = [URLS['gallery'] + f"{gdata['gallery']}/"]
         elif gallery_url:
             mdata['urls'] = [gallery_url]
 
     return mdata
+
 
 GalleryData = hpx.command.GalleryData
 LanguageData = hpx.command.LanguageData
@@ -357,11 +372,12 @@ ParodyNameData = hpx.command.ParodyNameData
 CircleData = hpx.command.CircleData
 CategoryData = hpx.command.CategoryData
 UrlData = hpx.command.UrlData
-NamespaceTagData= hpx.command.NamespaceTagData
-TagData= hpx.command.TagData
+NamespaceTagData = hpx.command.NamespaceTagData
+TagData = hpx.command.TagData
 NamespaceData = hpx.command.NamespaceData
 
-def apply_metadata(data, gallery, options):
+
+def apply_metadata( data, gallery, options ):
     """
     data = {
         'titles': None, # [(title, language),...]
@@ -426,14 +442,14 @@ def apply_metadata(data, gallery, options):
     if data.get('category'):
         gdata.category = CategoryData(name=data['category'])
         log.debug("applied category")
-    
+
     if data.get('language'):
         gdata.language = LanguageData(name=data['language'])
         log.debug("applied language")
 
     if isinstance(data.get('tags'), (dict, list)):
         if isinstance(data['tags'], list):
-            data['tags'] = {None: data['tags']}
+            data['tags'] = { None: data['tags'] }
         gnstags = []
         for ns, tags in data['tags'].items():
             if ns is not None:
@@ -443,7 +459,7 @@ def apply_metadata(data, gallery, options):
             for t in tags:
                 t = t.strip()
                 if t:
-                    kw = {'tag': TagData(name=t)}
+                    kw = { 'tag': TagData(name=t) }
                     if ns:
                         kw['namespace'] = NamespaceData(name=ns)
                     gnstags.append(NamespaceTagData(**kw))
@@ -466,7 +482,7 @@ def apply_metadata(data, gallery, options):
             gdata.urls = gurls
             log.debug("applied urls")
 
-    applied = hpx.command.UpdateItemData(gallery, gdata, options=options)
+    applied = happypanda.core.commands.item_cmd.UpdateItemData(gallery, gdata, options=options)
 
     log.debug(f"applied: {applied}")
 

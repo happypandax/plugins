@@ -1,12 +1,14 @@
-import arrow
 import __hpx__ as hpx
+import arrow
+
 from . import common
 
 log = hpx.get_logger(__name__)
 
+
 class Eze(common.Extractor):
 
-    def file_to_dict(self, fs):
+    def file_to_dict( self, fs ):
         """
         A subclass can choose to override or extend this method.
         Should return a dict with data from the file which will be passed to the extract method.
@@ -15,21 +17,21 @@ class Eze(common.Extractor):
         """
         d = super().file_to_dict(fs)
         k = ('gallery_info',)
-        if d and not all(map(lambda x: x in d, k)): # make sure all keys are present
+        if d and not all(map(lambda x: x in d, k)):  # make sure all keys are present
             d = None
-        k =  ('image_info', 'gallery_info_full')
-        if d and not any(map(lambda x: x in d, k)): # make sure one of the keys are present
+        k = ('image_info', 'gallery_info_full')
+        if d and not any(map(lambda x: x in d, k)):  # make sure one of the keys are present
             d = None
         return d
 
-    def extract(self, filedata):
+    def extract( self, filedata ):
         """
         A subclass must implement this method.
         Should populate a dict that looks like common_data (see common.py) and return it
 
         filedata parameter is the dict created in the file_to_dict method
         """
-        d = {}
+        d = { }
         filedata = filedata.get('gallery_info')
         if filedata:
             log.debug("Expecting eze metadata file")
@@ -49,7 +51,7 @@ class Eze(common.Extractor):
             mtags = filedata.get("tags")
 
             if mtags:
-                d['tags'] = {}
+                d['tags'] = { }
                 for ns, t in mtags.items():
                     d['tags'].setdefault(common.capitalize_text(ns), t)
 
@@ -66,5 +68,6 @@ class Eze(common.Extractor):
                 d['pub_date'] = arrow.get(*mupdate)
 
         return d
+
 
 common.register_extractor(Eze, common.DataType.eze)
