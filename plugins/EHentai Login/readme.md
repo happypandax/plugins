@@ -9,6 +9,10 @@ Replace `[webserver-host]` with wherever your HPX webserver is hosted at.
 
 # Changelog
 
+- `1.2.0`
+    - Use new plugin store introduced in HPX v0.14.0
+    - fix misc bugs
+
 - `1.1.0`
     - Added a new field for additional cookie values
 
