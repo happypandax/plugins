@@ -1,6 +1,6 @@
-{% extends __default__ %}
+{% layout __default__ %}
 
-{% block include_javascript %}
+{% block script %}
 <script src="script.js"></script>
 {% endblock %}
 
@@ -44,7 +44,7 @@ EHentai Metadata Plugin
         <input type="password" name="ipb_pass_hash" placeholder="Required">
     </div>
     <div class="field">
-        <label>Additional</label>
+        <label>Additional cookie values</label>
         <div class="ui compact message small">
           <p>Comma-separated values: key_1=value_1, key_2=value2</p>
         </div>
