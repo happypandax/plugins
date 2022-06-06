@@ -47,7 +47,7 @@ def download_info():
     return hpx.command.DownloadInfo(
         identifier = IDENTIFIER,
         name = "NHentai",
-        parser = website_url_regex_gen("nhentai.net", path_regex=r"g\/[0-9]{3,10}", trailing_slash=True, variable_tld=False, trailing_fragment=True, end=True),
+        parser = r"(?=((?:https://)?nhentai.net/g/([^/]+/)))\1",
         sites = ("https://nhentai.net",),
         description = "Download manga and doujinshi from nhentai.net",
     )

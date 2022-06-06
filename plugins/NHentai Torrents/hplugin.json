@@ -1,0 +1,16 @@
+{
+    "id": "2be7680a-1a4b-4144-886f-9ac497614ff2",
+    "shortname": "nhentai-torrents",
+    "name": "NHentai Torrent Downloader",
+    "version": "1.0.0",
+    "description": "Too many tiny torrents",
+    "author": "Ra",
+    "update_url": "https://github.com/happypandax/plugins/tree/master/plugins/NHentai%20Torrents",
+    "website": "https://github.com/happypandax/plugins/tree/master/plugins/NHentai%20Torrents",
+    "entry": "main.py",
+    "test": "test.py",
+    "require": [
+        "happypandax >= 0.12.0",
+        "aiofiles ~= 0.8.0"
+    ]
+}
