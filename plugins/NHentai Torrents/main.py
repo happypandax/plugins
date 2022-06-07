@@ -1,4 +1,4 @@
-import __hpx__ as hpx, constants, is_win # type: ignore
+import __hpx__ as hpx, constants, is_win  # type: ignore
 
 from asyncio import Queue, Event, new_event_loop, get_running_loop, run, sleep
 from pathlib import Path
@@ -22,9 +22,10 @@ TOTAL_WORKERS = 1
 NH_COOKIE = ""
 CHECK_DELAY = 24 * 60 * 60
 
-
+NH = URL("https://nhentai.net/g/")
 NH_LINK = compile(r"(?=(https://nhentai.net/g/\d+)[^0-9])")
 NH_INFO = compile(r"(?=_gallery = JSON\.parse\(\"([^;]+)\")")
+
 
 def search_dir(path_: Path) -> set[URL]:
     found_links = set()
@@ -46,48 +47,21 @@ def search_dir(path_: Path) -> set[URL]:
 
 
 async def get_magnet(queue: Queue, depleted: Event):
-    cookies = CookieJar()
-    cookies.update_cookies(
-        {
-            "sessionid": NH_COOKIE,
-        }
-    )
     while not depleted.is_set():
-        link: URL = await queue.get()
-        if (
-            torrent_file := Path(f"./save_magnets/{str(link).split('/')[-1]}.torrent")
-        ).exists():
-            queue.task_done()
-            continue
         async with ClientSession(
             headers={"user-agent": "hpx-browser-extension"},
             cookies={
                 "sessionid": NH_COOKIE,
             },
         ) as session:
-            cookies = {
-                "sessionid": NH_COOKIE,
-            }
-            headers = {
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/jxl,image/webp,*/*;q=0.8",
-                "Host": "nhentai.net",
-                "User-Agent": "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101 Firefox/91.0 Waterfox/91.10.0",
-                "Accept-Encoding": "gzip, deflate, br",
-                "Upgrade-Insecure-Requests": 1,
-                "Sec-Fetch-Dest": "document",
-                "Sec-Fetch-Mode": "navigate",
-                "Sec-Fetch-Site": "none",
-                "Sec-Fetch-User": "?1",
-            }
-
-            async with session.request("GET", link / "download") as resp:
+            async with session.request("GET", NH / "download") as resp:
                 bytes_data = await resp.read()
                 try:
                     meta_data = decode(bytes_data)
                     name_bytes = meta_data["info"]["name"]
                     name = bytes.decode(name_bytes, "UTF-8")
                     if is_win:
-                        name = UNSAFE_WIN32.sub('', name)
+                        name = UNSAFE_WIN32.sub("", name)
 
                 except MalformedBencodeException:
                     continue
@@ -95,7 +69,6 @@ async def get_magnet(queue: Queue, depleted: Event):
                 async with open(SAVE_PATH / f"{name}.torrent", "wb+") as mag:
                     await mag.write(bytes_data)
                     queue.task_done()
-
 
 
 async def get_mags(set_of_links: set[URL]):
@@ -115,7 +88,9 @@ async def get_mags(set_of_links: set[URL]):
 
 @hpx.attach("init")
 def main():
-    nh_links: set[URL] = search_dir(GREP_DIR) # probably just throw a property under config.yaml:plugin:__name__:search dir
+    nh_links: set[URL] = search_dir(
+        GREP_DIR
+    )  # probably just throw a property under config.yaml:plugin:__name__:search dir
     try:
         loop = get_running_loop()
         loop.create_task(get_mags(nh_links))
