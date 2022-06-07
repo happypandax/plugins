@@ -1,6 +1,10 @@
+from typing import Any
 import __hpx__ as hpx, constants, is_win  # type: ignore
 
 from asyncio import Queue, Event, get_event_loop, get_running_loop, run, sleep
+from multiprocessing.sharedctypes import SynchronizedArray
+from multiprocessing import get_context
+from json import loads
 from pathlib import Path
 from re import compile
 
@@ -15,7 +19,6 @@ log = hpx.get_logger("main")
 GREP_DIR = Path("./")
 # save them here, relative to where the script is ran
 SAVE_PATH = Path(constants.download_path)
-UNSAFE_WIN32 = compile(r"[|\/:*?\"<>]")
 # How many concurrent downloaders do you want
 TOTAL_WORKERS = 1
 WORKER_DELAY = 1.5
@@ -24,8 +27,17 @@ NH_COOKIE = ""
 CHECK_DELAY = 24 * 60 * 60
 
 NH = URL("https://nhentai.net/g/")
+
 NH_LINK = compile(r"(?=(nhentai.net/g/[^/]+))\1")
 NH_INFO = compile(r"(?=_gallery = JSON\.parse\(\"([^;]+)\")")
+UNSAFE_WIN32 = compile(r"[|\/:*?\"<>]")
+ESC_MUCH = compile(r"(?=(\\\\))\1")
+
+GALLERY_TAGS = SynchronizedArray(dict(), ctx=get_context())
+
+
+def clean_tags(target: str) -> dict:
+    return loads(ESC_MUCH.sub(r"\\", target))
 
 
 async def search_dir(path_: Path) -> set[URL]:
@@ -57,6 +69,14 @@ async def get_magnet(queue: Queue, depleted: Event):
                 "sessionid": NH_COOKIE,
             },
         ) as session:
+            async with session.request("GET", NH / id) as gallery_page:
+                tags = clean_tags(
+                    (await gallery_page.text())
+                )  # type: dict[str, str | int | list[Any] | dict[Any, Any]]
+                # Thoeretically these could be stored onto the gallery at this point, since the metadata of the torrent contains: all file names and directory layout
+                # Applying these tags here would make it far easier to manage, however there *is* the chance that the torrent never gets downloaded by the user ending in useless entries in database
+                GALLERY_TAGS[id] = tags
+
             async with session.request("GET", NH / id / "download") as resp:
                 bytes_data = await resp.read()
                 try:

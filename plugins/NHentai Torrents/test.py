@@ -1,12 +1,26 @@
-from asyncio import Queue, Event, get_event_loop, new_event_loop, get_running_loop, run, sleep
+from asyncio import (
+    Queue,
+    Event,
+    get_event_loop,
+    new_event_loop,
+    get_running_loop,
+    run,
+    sleep,
+)
 from pathlib import Path
+from multiprocessing.sharedctypes import SynchronizedArray
+from multiprocessing import get_context
 from re import compile
+from typing import Any, Generic, Iterable, TypeVar
 from sys import platform, argv
 
 from yarl import URL
 from aiohttp import ClientSession, CookieJar
 from aiofiles import open
 from bencode import MalformedBencodeException, decode
+
+Tag = TypeVar("Tag", Iterable, SynchronizedArray)
+
 
 # folder with files containing links (bookmark exports, tab sessions, etc) relative to where script is ran
 GREP_DIR = Path("./example_dir")
@@ -22,6 +36,8 @@ CHECK_DELAY = 24 * 60 * 60
 
 NH_LINK = compile(r"(?=(https://nhentai.net/g/\d+)[^0-9])")
 NH_INFO = compile(r"(?=_gallery = JSON\.parse\(\"([^;]+)\")")
+gallery_tags = SynchronizedArray(dict(), ctx=get_context())
+
 
 def search_dir(path_: Path) -> set[URL]:
     found_links = set()
@@ -50,9 +66,7 @@ async def get_magnet(queue: Queue, depleted: Event):
     )
     while not depleted.is_set():
         link: URL = await queue.get()
-        if (
-             SAVE_PATH / f"{str(link).split('/')[-1]}.torrent"
-        ).exists():
+        if (SAVE_PATH / f"{str(link).split('/')[-1]}.torrent").exists():
             queue.task_done()
             continue
         async with ClientSession(
@@ -82,8 +96,8 @@ async def get_magnet(queue: Queue, depleted: Event):
                     meta_data = decode(bytes_data)
                     name_bytes = meta_data["info"]["name"]
                     name = bytes.decode(name_bytes, "UTF-8")
-                    if platform == 'win32':
-                        name = UNSAFE_WIN32.sub('', name)
+                    if platform == "win32":
+                        name = UNSAFE_WIN32.sub("", name)
 
                 except MalformedBencodeException:
                     continue
@@ -106,6 +120,7 @@ async def get_mags(set_of_links: set[URL]):
     depleted.set()
 
 
-
-nh_links: set[URL] = search_dir(GREP_DIR) # probably just throw a property under config.yaml:plugin:__name__:search dir
+nh_links: set[URL] = search_dir(
+    GREP_DIR
+)  # probably just throw a property under config.yaml:plugin:__name__:search dir
 run(get_mags(nh_links))
