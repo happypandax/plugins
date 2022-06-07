@@ -1,12 +1,12 @@
 import __hpx__ as hpx, constants, is_win  # type: ignore
 
-from asyncio import Queue, Event, new_event_loop, get_running_loop, run, sleep
+from asyncio import Queue, Event, get_event_loop, get_running_loop, run, sleep
 from pathlib import Path
 from re import compile
 
 from yarl import URL
-from aiohttp import ClientSession, CookieJar
-from aiofiles import open
+from aiohttp import ClientSession
+import aiofiles
 from .bencode import MalformedBencodeException, decode
 
 log = hpx.get_logger("main")
@@ -18,35 +18,38 @@ SAVE_PATH = Path(constants.download_path)
 UNSAFE_WIN32 = compile(r"[|\/:*?\"<>]")
 # How many concurrent downloaders do you want
 TOTAL_WORKERS = 1
+WORKER_DELAY = 1.5
 # Stored on browser, get it from cookie storage
 NH_COOKIE = ""
 CHECK_DELAY = 24 * 60 * 60
 
 NH = URL("https://nhentai.net/g/")
-NH_LINK = compile(r"(?=(https://nhentai.net/g/\d+)[^0-9])")
+NH_LINK = compile(r"(?=(nhentai.net/g/[^/]+))\1")
 NH_INFO = compile(r"(?=_gallery = JSON\.parse\(\"([^;]+)\")")
 
 
-def search_dir(path_: Path) -> set[URL]:
-    found_links = set()
+async def search_dir(path_: Path) -> set[URL]:
+    nh_ids = set()
     if not path_.exists():
-        print(f"search dir does not exists: {path_}")
-        return found_links
+        return nh_ids
 
     for file in path_.iterdir():
         if file.is_dir():
-            search_dir(file)
+            await search_dir(file)
 
         if file.is_file():
-            file_text = file.read_text()
+            async with aiofiles.open(file, "r") as f:
+                file_text = await f.read()
+
             matches = NH_LINK.findall(file_text)
             for match in matches:
-                found_links.add(URL(match))
+                nh_ids.add(match.split("/")[-1])
 
-    return found_links
+    return nh_ids
 
 
 async def get_magnet(queue: Queue, depleted: Event):
+    id = await queue.get()
     while not depleted.is_set():
         async with ClientSession(
             headers={"user-agent": "hpx-browser-extension"},
@@ -54,7 +57,7 @@ async def get_magnet(queue: Queue, depleted: Event):
                 "sessionid": NH_COOKIE,
             },
         ) as session:
-            async with session.request("GET", NH / "download") as resp:
+            async with session.request("GET", NH / id / "download") as resp:
                 bytes_data = await resp.read()
                 try:
                     meta_data = decode(bytes_data)
@@ -66,21 +69,23 @@ async def get_magnet(queue: Queue, depleted: Event):
                 except MalformedBencodeException:
                     continue
 
-                async with open(SAVE_PATH / f"{name}.torrent", "wb+") as mag:
+                async with aiofiles.open(SAVE_PATH / f"{name}.torrent", "wb") as mag:
                     await mag.write(bytes_data)
                     queue.task_done()
 
 
-async def get_mags(set_of_links: set[URL]):
-    while hpx is not None:
+async def start():
+    while hpx is not None and get_event_loop.is_running():
+        links = await search_dir(GREP_DIR)
+
         job_queue = Queue(maxsize=TOTAL_WORKERS)
         depleted = Event()
         for _ in range(TOTAL_WORKERS):
             get_running_loop().create_task(get_magnet(job_queue, depleted))
 
-        for link in set_of_links:
+        for link in links:
             await job_queue.put(link)
-            await sleep(5)
+            await sleep(WORKER_DELAY)
 
         depleted.set()
         await sleep(CHECK_DELAY)
@@ -88,11 +93,9 @@ async def get_mags(set_of_links: set[URL]):
 
 @hpx.attach("init")
 def main():
-    nh_links: set[URL] = search_dir(
-        GREP_DIR
-    )  # probably just throw a property under config.yaml:plugin:__name__:search dir
+    # we don't need async necessarily but in the case of thousands of IDs, it would be beneficial
     try:
         loop = get_running_loop()
-        loop.create_task(get_mags(nh_links))
+        loop.create_task(start())
     except RuntimeError:
-        run(get_mags(nh_links))
+        run(start())
