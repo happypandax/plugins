@@ -97,7 +97,7 @@ def download_query(item, is_exhentai):
     """
 
     # get ehentai login
-    login_site = URLS['eh'] if is_exhentai else URLS['ex']
+    login_site = URLS['ex'] if is_exhentai else URLS['eh']
     login_status = hpx.command.GetLoginStatus(login_site)
     login_session = None
     if login_status:
@@ -165,19 +165,27 @@ def download_query(item, is_exhentai):
                                 session=login_session
                                 )
                             r = hpx.command.SinglePOSTRequest().request(a_url, req_props)
-                            if r.ok and "Key missing, or incorrect key provided" not in r.text:
-                                soup = BeautifulSoup(r.text, "html.parser")
-                                dp_url = soup.find("p", id="continue")
-                                if dp_url and dp_url.a: # finally
-                                    download_requests.append(
-                                        DownloadRequest(
-                                            downloaditem=item,
-                                            url=dp_url.a['href'] + '?start=1',
-                                            properties=hpx.command.RequestProperties(method=hpx.Method.GET, headers=HEADERS, session=login_session), # we need to use the same session
-                                            filename=item.name.strip()+'.zip'))
-                                    archive_req = True
+                            if r.ok:
+                                if "Insufficient funds" in r.text:
+                                    log.info("Unable to grab gallery archive due to insufficent funds (GP) on the account")
+                                    item.name = "(Insufficient GP) "+item.name
+                                elif "Key missing, or incorrect key provided" not in r.text:
+                                    soup = BeautifulSoup(r.text, "html.parser")
+                                    dp_url = soup.find("p", id="continue")
+                                    if dp_url and dp_url.a: # finally
+                                        download_requests.append(
+                                            DownloadRequest(
+                                                downloaditem=item,
+                                                url=dp_url.a['href'] + '?start=1',
+                                                properties=hpx.command.RequestProperties(method=hpx.Method.GET, headers=HEADERS, session=login_session), # we need to use the same session
+                                                filename=item.name.strip()+'.zip'))
+                                        archive_req = True
                             else:
                                 log.warning(f"got invalid key page or bad status: {r.status_code}")
+                                if r.status_code == 404 and "This gallery is currently unavailable" in r.text:
+                                    #We know that there is a valid key for us to get here, so the gallery existed at some point in the past
+                                    #Most of the time, it is a copyright takedown, but I don't see a simple way to determine what is the cause
+                                    item.name = "(Gallery Expunged) "+item.name
 
                         else:
                             log.warning(f"didn't find archiver key for data: {eh_data}")
