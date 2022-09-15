@@ -137,19 +137,22 @@ def download_query(item, is_exhentai):
                     log.info("got empty response when trying to retrieve archiver key, this usually means that user has no access to exhentai")
                 if response and not 'error' in response:
                     for gdata in response['gmetadata']:
+                        # Often the gallery is still available to download even though it is flagged as expunged
+                        # This makes no sense to me, as other times when the gallery is not available, this flag is still set to false and so seems like it is totally pointless
+                        # if "expunged" in gdata and gdata["expunged"]==True:
+                        #     item.name = "(Gallery Expunged) "+item.name
+                        if 'title' in gdata:
+                            item.name = gdata['title']
+                        if 'thumb' in gdata:
+                            download_requests.append(
+                                DownloadRequest(
+                                    downloaditem=item,
+                                    url=gdata['thumb'],
+                                    is_thumbnail=True,
+                                    properties=hpx.command.RequestProperties(method=hpx.Method.GET, headers=HEADERS, session=login_session), # we need to use the same session
+                                    ))
+                            thumbnail_req = True
                         if 'archiver_key' in gdata:
-                            if 'title' in gdata:
-                                item.name = gdata['title']
-                            if 'thumb' in gdata:
-                                download_requests.append(
-                                    DownloadRequest(
-                                        downloaditem=item,
-                                        url=gdata['thumb'],
-                                        is_thumbnail=True,
-                                        properties=hpx.command.RequestProperties(method=hpx.Method.GET, headers=HEADERS, session=login_session), # we need to use the same session
-                                        ))
-                                thumbnail_req = True
-                                                    
                             log.info(f"found archiver key for gallery {(gid, gtoken)}")
                             a_key = gdata['archiver_key']
                             a_url = URLS['ex_archiver' if is_exhentai else 'e_archiver'].format(gallery_id=gid, gallery_token=gtoken, archiver_key=a_key)
@@ -184,9 +187,8 @@ def download_query(item, is_exhentai):
                                 log.warning(f"got invalid key page or bad status: {r.status_code}")
                                 if r.status_code == 404 and "This gallery is currently unavailable" in r.text:
                                     #We know that there is a valid key for us to get here, so the gallery existed at some point in the past
-                                    #Most of the time, it is a copyright takedown, but I don't see a simple way to determine what is the cause
-                                    item.name = "(Gallery Expunged) "+item.name
-
+                                    #This seems like it is most of the time a copyright takedown, but I have no idea why this is not marked as expunged
+                                    item.name = "(Gallery Unavailable) "+item.name
                         else:
                             log.warning(f"didn't find archiver key for data: {eh_data}")
             except Exception as e:
@@ -212,7 +214,7 @@ def download_done(result):
     should return:
     the same :class:`DownloadResult` that was provided to the handler, potentially modified on the 'path' or `status` and `reason` properties
     """
-    # there's nothing special to post-process in the case of nhentai downloader, so just return the result as is
+    # there's nothing special to post-process in the case of e(x)hentai downloader, so just return the result as is
     log.info(f"download of archive was successful for {result.downloaditem.name}")
     return result
 
