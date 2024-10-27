@@ -9,6 +9,7 @@ import arrow
 import regex
 from bs4 import BeautifulSoup
 
+import happypanda.core.commands.import_cmd
 import happypanda.core.commands.item_cmd
 
 log = hpx.get_logger("main")
@@ -94,28 +95,29 @@ def query( itemtuple ):
     The attached handler should just return all the candidates found.
     """
     log.info("Querying chaika for metadata")
-    mdata = []
+    mquery = []
     for mitem in itemtuple:
-        item = mitem.item
+        item_id = mitem.item_id
         url = mitem.url
         gurls = []  # tuple of (title, url)
         # url was provided
         if url:
-            log.info(f"url provided: {url} for {item}")
+            log.info(f"url provided: {url} for {item_id}")
             gurls.append((url, url))
         else:  # manually search for id
-            log.info(f"url not provided for {item}")
+            log.info(f"url not provided for {item_id}")
             # search with title
             i_title = ""
             i_hash = ""
             if PLUGIN_CONFIG.get("filename_search"):
-                sources = item.get_sources()
+                sources = hpx.command.GetItemSources(item_id)
                 if sources:
                     # get folder/file name
                     i_title = os.path.split(sources[0])[1]
                     # remove ext
                     i_title = os.path.splitext(i_title)[0]
             else:
+                item = hpx.command.GetModelItems(mitem.model, item_id, load=("titles.name",), as_scalar=True)
                 if item.titles:
                     i_title = item.titles[0].name  # make user choice
             if i_title:
@@ -125,7 +127,7 @@ def query( itemtuple ):
             if not gurls:
                 pass
 
-        log.info(f"found {len(gurls)} urls for item: {item}")
+        log.info(f"found {len(gurls)} urls for item: {item_id}")
 
         # list is sorted by date added so we reverse it
         gurls.reverse()
@@ -145,22 +147,22 @@ def query( itemtuple ):
         for t, u in final_gurls:
             g_type, g_id = parse_url(u)
             if g_type and g_id:
-                mdata.append(hpx.command.MetadataQuery(
+                mquery.append(hpx.command.MetadataQuery(
                     metadataitem=mitem,
                     title=t,
                     url=u,
-                    data={
+                    extra={
                         'type': g_type,
                         'id': g_id,
                         'gallery_url': u,
                         }
                     )
                     )
-    return tuple(mdata)
+    return tuple(mquery)
 
 
 @hpx.attach("Metadata.apply", trigger="chaika")
-def apply( datatuple ):
+def apply( querytuple ):
     """
     Called to fetch and apply metadata to the given data items.
     Remember to set the `status` property on the :class:`MetadataResult` object to `True` on a successful fetch.
@@ -168,29 +170,29 @@ def apply( datatuple ):
     log.info("Applying metadata from chaika")
     mresult = []
 
-    for mdata in datatuple:
-        applied = False
+    for mquery in querytuple:
+        item_data = None
         # prepare request
         req_props = hpx.command.RequestProperties(
             headers=HEADERS,
             )
 
-        api_url = URLS['archive_api'] if mdata.data['type'] == 'archive' else URLS['gallery_api']
-        api_url += str(mdata.data['id'])
+        api_url = URLS['archive_api'] if mquery.data['type'] == 'archive' else URLS['gallery_api']
+        api_url += str(mquery.data['id'])
 
         r = hpx.command.SingleGETRequest().request(api_url, req_props)
         if r.ok:
             response = r.json
             if response and not 'result' in response:
-                filtered_data = format_metadata(response, mdata.item, apply_url=PLUGIN_CONFIG.get('add_gallery_url', True), gallery_url=mdata.data['gallery_url'])
-                applied = apply_metadata(filtered_data, mdata.item, mdata.options)
+                filtered_data = format_metadata(response, mquery.item_id, apply_url=PLUGIN_CONFIG.get('add_gallery_url', True), gallery_url=mquery.extra['gallery_url'])
+                item_data = apply_metadata(filtered_data, mquery.item_id, mquery.options)
             elif response:
                 log.warning(response)
             reason = ""
-            if not applied and 'result' in response:
+            if not item_data and 'result' in response:
                 reason = response['result']
-            mresult.append(hpx.command.MetadataResult(data=mdata, status=applied, reason=reason))
-        log.info(f"Applied: {applied}")
+            mresult.append(hpx.command.MetadataResult(query=mquery, data=item_data, status=item_data.is_dirty(), reason=reason))
+        log.info(f"Applied: {item_data.is_dirty()}")
     return tuple(mresult)
 
 
@@ -260,7 +262,7 @@ def capitalize_text( text ):
     return " ".join(x.capitalize() for x in text.strip().split())
 
 
-def format_metadata( gdata, item, apply_url=False, gallery_url=None ):
+def format_metadata( gdata, item_id, apply_url=False, gallery_url=None ):
     """
     Formats metadata to look like this for apply_metadata:
     data = {
@@ -278,7 +280,7 @@ def format_metadata( gdata, item, apply_url=False, gallery_url=None ):
 
     mdata['titles'] = []
 
-    parsed_text = hpx.command.ItemTextParser(gdata['title'])
+    parsed_text = happypanda.core.commands.import_cmd.ItemTextParser(gdata['title'])
 
     parsed_title = parsed_text.extract_title()
     if parsed_title:
@@ -377,7 +379,7 @@ TagData = hpx.command.TagData
 NamespaceData = hpx.command.NamespaceData
 
 
-def apply_metadata( data, gallery, options ):
+def apply_metadata( data, item_id, options ):
     """
     data = {
         'titles': None, # [(title, language),...]
@@ -393,7 +395,7 @@ def apply_metadata( data, gallery, options ):
 
     log.debug(f"data: {data}")
 
-    gdata = GalleryData()
+    item_data = GalleryData()
 
     if isinstance(data.get('titles'), (list, tuple, set)):
         gtitles = []
@@ -408,7 +410,7 @@ def apply_metadata( data, gallery, options ):
                 gtitles.append(gtitle)
 
         if gtitles:
-            gdata.titles = gtitles
+            item_data.titles = gtitles
             log.debug("applied titles")
 
     if isinstance(data.get('artists'), (list, tuple, set)):
@@ -425,7 +427,7 @@ def apply_metadata( data, gallery, options ):
                     gartist.circles = gcircles
 
         if gartists:
-            gdata.artists = gartists
+            item_data.artists = gartists
             log.debug("applied artists")
 
     if isinstance(data.get('parodies'), (list, tuple, set)):
@@ -436,15 +438,15 @@ def apply_metadata( data, gallery, options ):
                 gparodies.append(gparody)
 
         if gparodies:
-            gdata.parodies = gparodies
+            item_data.parodies = gparodies
             log.debug("applied parodies")
 
     if data.get('category'):
-        gdata.category = CategoryData(name=data['category'])
+        item_data.category = CategoryData(name=data['category'])
         log.debug("applied category")
 
     if data.get('language'):
-        gdata.language = LanguageData(name=data['language'])
+        item_data.language = LanguageData(name=data['language'])
         log.debug("applied language")
 
     if isinstance(data.get('tags'), (dict, list)):
@@ -465,12 +467,12 @@ def apply_metadata( data, gallery, options ):
                     gnstags.append(NamespaceTagData(**kw))
 
         if gnstags:
-            gdata.tags = gnstags
+            item_data.tags = gnstags
             log.debug("applied tags")
 
     if isinstance(data.get('pub_date'), (datetime.datetime, arrow.Arrow)):
         pub_date = data['pub_date']
-        gdata.pub_date = pub_date
+        item_data.pub_date = pub_date
         log.debug("applied pub_date")
 
     if isinstance(data.get('urls'), (list, tuple)):
@@ -479,11 +481,9 @@ def apply_metadata( data, gallery, options ):
             if u:
                 gurls.append(UrlData(name=u))
         if gurls:
-            gdata.urls = gurls
+            item_data.urls = gurls
             log.debug("applied urls")
 
-    applied = happypanda.core.commands.item_cmd.UpdateItemData(gallery, gdata, options=options)
+    log.debug(f"applied: {item_data.is_dirty()}")
 
-    log.debug(f"applied: {applied}")
-
-    return applied
+    return item_data

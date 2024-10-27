@@ -1,5 +1,6 @@
 import __hpx__ as hpx
 
+import happypanda.core.commands.import_cmd
 from . import common
 
 log = hpx.get_logger(__name__)
@@ -73,7 +74,7 @@ class EHentaiDownloader(common.Extractor):
                         d.setdefault('urls', []).append(line)
                     else:
                         title_lang = "english" if linenum == 1 else "japanese"
-                        nameparser = hpx.command.ItemTextParser(line)
+                        nameparser = happypanda.core.commands.import_cmd.ItemTextParser(line)
                         parsed_title = nameparser.extract_title()
                         d.setdefault("titles", []).append((parsed_title[0] if parsed_title else line, title_lang))
                     continue
