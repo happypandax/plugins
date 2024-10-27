@@ -16,13 +16,13 @@ HEADERS = { 'user-agent': "Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 
 DEFAULT_DELAY = 5
 
 URLS = {
-    'eh': 'https://e-hentai.org',
-    'ex': 'https://exhentai.org',
-    'e_api': 'https://api.e-hentai.org/api.php',
-    'ex_api': 'https://exhentai.org/api.php',
-    'e_archiver': 'https://e-hentai.org/archiver.php?gid={gallery_id}&token={gallery_token}&or={archiver_key}',
-    'ex_archiver': 'https://exhentai.org/archiver.php?gid={gallery_id}&token={gallery_token}&or={archiver_key}',
-    }
+    "eh": "https://e-hentai.org",
+    "ex": "https://exhentai.org",
+    "e_api": "https://api.e-hentai.org/api.php",
+    "ex_api": "https://exhentai.org/api.php",
+    "e_archiver": "https://e-hentai.org/archiver.php?gid={gallery_id}&token={gallery_token}",
+    "ex_archiver": "https://exhentai.org/archiver.php?gid={gallery_id}&token={gallery_token}",
+}
 
 
 def website_url_regex_gen( domain, path_regex=None, variable_port=False, variable_tld=False, trailing_slash=True, end=True, trailing_fragment=True ):
@@ -114,7 +114,6 @@ def download_query( item, is_exhentai ):
 
     download_requests = []
 
-    thumbnail_req = False
     archive_req = False
 
     if login_session:
@@ -142,25 +141,37 @@ def download_query( item, is_exhentai ):
                 except json.JSONDecodeError:
                     response = None
                     log.info("got empty response when trying to retrieve archiver key, this usually means that user has no access to exhentai")
-                if response and not 'error' in response:
+                if response and "error" not in response:
                     for gdata in response['gmetadata']:
-                        if 'archiver_key' in gdata:
+                        if all(
+                            k in gdata
+                            for k in (
+                                "gid",
+                                "token",
+                            )
+                        ):
                             if 'title' in gdata:
                                 item.name = gdata['title']
                             if 'thumb' in gdata:
                                 download_requests.append(
                                     DownloadRequest(
                                         downloaditem=item,
-                                        url=gdata['thumb'],
+                                        url=gdata["thumb"],
                                         is_thumbnail=True,
-                                        properties=hpx.command.RequestProperties(method=hpx.Method.GET, headers=HEADERS, session=login_session),  # we need to use the same session
-                                        )
+                                        properties=hpx.command.RequestProperties(
+                                            method=hpx.Method.GET,
+                                            headers=HEADERS,
+                                            session=login_session,
+                                        ),  # we need to use the same session
                                     )
-                                thumbnail_req = True
+                                )
 
-                            log.info(f"found archiver key for gallery {(gid, gtoken)}")
-                            a_key = gdata['archiver_key']
-                            a_url = URLS['ex_archiver' if is_exhentai else 'e_archiver'].format(gallery_id=gid, gallery_token=gtoken, archiver_key=a_key)
+                            a_url = URLS[
+                                "ex_archiver" if is_exhentai else "e_archiver"
+                            ].format(gallery_id=gid, gallery_token=gtoken)
+                            log.info(
+                                f"composed archiver url for {(gid, gtoken)}: {a_url}"
+                            )
                             # prepare request
                             # get the download url
                             form_data = {
@@ -191,8 +202,9 @@ def download_query( item, is_exhentai ):
                                 log.warning(f"got invalid key page or bad status: {r.status_code}")
 
                         else:
-                            log.warning(f"didn't find archiver key for data: {eh_data}")
-            except Exception as e:
+                            log.warning(f"received unexpected data for: {eh_data}")
+                            log.debug(f"received data: {gdata}")
+            except Exception:
                 log.debug(f"got an error, last request content: \n\t {r.text}")
                 raise
 
