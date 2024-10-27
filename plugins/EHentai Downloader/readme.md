@@ -17,6 +17,9 @@ There's no available config options for this plugin
 - Torrents (waiting for HPX to support this)
 
 # Changelog
+
+- `1.0.1`
+    - fix: handle deprecated archiver_key for ehentai downloader
     
 - `1.0.0`
     - first version
