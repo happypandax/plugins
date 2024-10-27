@@ -2,7 +2,7 @@
     "id": "efaec768-760c-49d7-8d45-fb70b7db45e5",
     "shortname": "ehentai-downloader",
     "name": "EHentai Downloader",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "A plugin that enables downloading manga and doujinshi from E-Hentai & ExHentai",
     "author": "Twiddly",
     "update_url": "https://github.com/happypandax/plugins/tree/master/plugins/EHentai%20Downloader",
