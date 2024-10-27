@@ -31,6 +31,9 @@ Name | Default | Description
 
 # Changelog
     
+- `2.0.0`
+    - update to support HPX v1.0.0
+
 - `1.0.1`
     - updated to reflect site changes where titles where not geting extracted
     

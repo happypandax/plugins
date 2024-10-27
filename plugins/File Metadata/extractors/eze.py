@@ -1,6 +1,7 @@
 import __hpx__ as hpx
 import arrow
 
+import happypanda.core.commands.import_cmd
 from . import common
 
 log = hpx.get_logger(__name__)
@@ -44,7 +45,7 @@ class Eze(common.Extractor):
 
             for t, l in ((mtitle, "english"), (mtitle_jp, "japanese")):
                 if t:
-                    nameparser = hpx.command.ItemTextParser(t)
+                    nameparser = happypanda.core.commands.import_cmd.ItemTextParser(t)
                     parsed_title = nameparser.extract_title()
                     d.setdefault("titles", []).append((parsed_title[0] if parsed_title else t, l))
 

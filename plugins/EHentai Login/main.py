@@ -6,12 +6,15 @@ log = hpx.get_logger("main")
 
 default_delay = 8
 
-HEADERS = {'user-agent': "Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0"}
+HEADERS = {
+    'user-agent': "Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0"}
 
-match_url_prefix = r"^(http\:\/\/|https\:\/\/)?(www\.)?"  # http:// or https:// + www.
+# http:// or https:// + www.
+match_url_prefix = r"^(http\:\/\/|https\:\/\/)?(www\.)?"
 match_url_end = r"\/?$"
 
-url_regex = match_url_prefix + r"((exhentai|(g\.)?e-hentai)\.org)" + match_url_end
+url_regex = match_url_prefix + \
+    r"((exhentai|(g\.)?e-hentai)\.org)" + match_url_end
 
 MAIN_URLS = {
     'eh': "https://e-hentai.org",
@@ -55,7 +58,6 @@ def inited():
                 log.info("Successfully re-logged in")
 
 
-
 @hpx.subscribe("disable")
 def disabled():
     pass
@@ -65,14 +67,27 @@ def disabled():
 def removed():
     pass
 
+
 @hpx.attach("message")
 def message(msg: dict):
+    """
+    Called from plugin site
+    """
     t = msg.get("type")
     if t == "login":
         login(msg['data'])
     elif t == 'check-login':
         pass
     return {"logged_in": hpx.store.logged_in, "status": hpx.store.status_text}
+
+
+@hpx.attach("status")
+def status():
+    l = "Logged in" if hpx.store.logged_in else "Not logged in"
+    txt = hpx.store.status_text
+    s = f": {txt}" if txt else ""
+    return f"{l}{s}"
+
 
 @hpx.attach("Login.info")
 def login_info():
@@ -102,7 +117,8 @@ def login(userpass: dict, options=None):
         additional = userpass.get('additional', "")
         if additional:
             try:
-                additional = {k.strip(): v.strip() for k, v in [x.strip().split('=', 1) for x in additional.split(',')]}
+                additional = {k.strip(): v.strip() for k, v in [
+                    x.strip().split('=', 1) for x in additional.split(',')]}
                 cookies.update(additional)
             except:
                 raise ValueError("Failed to parse additional values")
@@ -158,7 +174,7 @@ def login(userpass: dict, options=None):
 
 
 @hpx.attach("Login.status", trigger="ehentai")
-def status(options):
+def login_status(options):
     return hpx.store.status_text
 
 

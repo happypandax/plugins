@@ -41,6 +41,9 @@ Name | Default | Description
 
 # Changelog
 
+- `2.0.0`
+    - update to support HPX v1.0.0
+
 - `1.2.1`
     - some misc. changes
 

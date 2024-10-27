@@ -9,7 +9,7 @@ import arrow
 import regex
 from bs4 import BeautifulSoup
 
-import happypanda.core.commands.item_cmd
+import happypanda.core.commands.import_cmd
 
 log = hpx.get_logger("main")
 
@@ -115,30 +115,30 @@ def query_eh( itemtuple ):
 
 
 @hpx.attach("Metadata.apply", trigger='ehentai')
-def apply_eh( datatuple ):
-    log.info(f"Applying metadata from ehentai with {len(datatuple)} items")
-    return apply(datatuple)
+def apply_eh( querytuple ):
+    log.info(f"Applying metadata from ehentai with {len(querytuple)} items")
+    return apply(querytuple)
 
 
 @hpx.attach("Metadata.query", trigger='exhentai')
-def query_ex( itemtuple ):
-    log.info(f"Querying exhentai for metadata with {len(itemtuple)} items")
+def query_ex( querytuple ):
+    log.info(f"Querying exhentai for metadata with {len(querytuple)} items")
     if not hpx.command.GetLoginStatus(URLS['ex']):
         log.info("Not logged in to exhentai, aborting...")
         rtuple = []
-        for i in itemtuple:
-            mr = hpx.command.MetadataResult(data=hpx.command.MetadataQuery(metadataitem=i), status=False,
+        for i in querytuple:
+            mr = hpx.command.MetadataResult(query=hpx.command.MetadataQuery(metadataitem=i), status=False,
                                             reason="Not logged in to exhentai, aborting..."
                                             )
             rtuple.append(mr)
         return tuple(rtuple)
-    return query(itemtuple, login_site=URLS['ex'])
+    return query(querytuple, login_site=URLS['ex'])
 
 
 @hpx.attach("Metadata.apply", trigger='exhentai')
-def apply_ex( datatuple ):
-    log.info(f"Applying metadata from exhentai with {len(datatuple)} items")
-    return apply(datatuple)
+def apply_ex( querytuple ):
+    log.info(f"Applying metadata from exhentai with {len(querytuple)} items")
+    return apply(querytuple)
 
 
 def query( itemtuple, login_site=URLS['eh'] ):
@@ -163,27 +163,29 @@ def query( itemtuple, login_site=URLS['eh'] ):
         gurls = []  # tuple of (title, url)
 
         url = mitem.url
-        item = mitem.item
+        item_id = mitem.item_id
         options = mitem.options
 
         # url was provided
         if url:
-            log.info(f"url provided: {url} for {item}")
+            log.info(f"url provided: {url} for {item_id}")
             gurls.append((url, url))
         else:  # manually search for id
-            log.info(f"url not provided for {item}")
+            log.info(f"url not provided for {item_id}")
             if (ex_login if "exhentai" in login_site else True):
                 # search with title
                 i_title = ""
                 i_hash = ""
                 if PLUGIN_CONFIG.get("filename_search"):
-                    sources = item.get_sources()
+                    sources = hpx.command.GetItemSources(item_id)
                     if sources:
                         # get folder/file name
                         i_title = os.path.split(sources[0])[1]
                         # remove ext
                         i_title = os.path.splitext(i_title)[0]
                 else:
+                    # get title from item
+                    item = hpx.command.GetModelItems(mitem.model, item_id, load=("titles.name",), as_scalar=True)
                     if item.titles:
                         i_title = item.titles[0].name  # make user choice
                 if i_title:
@@ -193,7 +195,7 @@ def query( itemtuple, login_site=URLS['eh'] ):
                 if not gurls:
                     pass
 
-        log.info(f"found {len(gurls)} urls for item: {item}")
+        log.info(f"found {len(gurls)} urls for item: {item_id}")
 
         # list is sorted by date added so we reverse it
         gurls.reverse()
@@ -218,7 +220,7 @@ def query( itemtuple, login_site=URLS['eh'] ):
                     metadataitem=mitem,
                     title=t,
                     url=u,
-                    data={
+                    extra={
                         'gallery': [g_id, g_token],
                         'gallery_url': u,
                         }
@@ -334,25 +336,24 @@ def parse_url( url ):
     return int(gallery_id), gallery_token
 
 
-def apply( datatuple ):
+def apply( querytuple ):
     """
     Called to fetch and apply metadata to the given data items.
     Remember to set the `status` property on the :class:`MetadataResult` object to `True` on a successful fetch.
     """
     mresults = []
-    applied = False
     eh_data = {
         'method': 'gdata',
         'gidlist': [],
         'namespace': 1
         }
 
-    mdata_map = { }  # (gid,token):metadatadata and gid:metadatadata
+    mquery_map = { }  # (gid,token):metadatadata and gid:metadatadata
 
-    for d in datatuple:
-        eh_data['gidlist'].append(d.data['gallery'])
-        mdata_map[tuple(d.data['gallery'])] = d
-        mdata_map[d.data['gallery'][0]] = d  # used for when token is invalid, assumes that there's no duplicate gid's
+    for q in querytuple:
+        eh_data['gidlist'].append(q.extra['gallery'])
+        mquery_map[tuple(q.extra['gallery'])] = q
+        mquery_map[q.extra['gallery'][0]] = q  # used for when token is invalid, assumes that there's no duplicate gid's
 
     # prepare request
     req_props = hpx.command.RequestProperties(
@@ -365,21 +366,27 @@ def apply( datatuple ):
         if response and not 'error' in response:
             for gdata in response['gmetadata']:
                 if 'error' in gdata:
-                    mdata = mdata_map[gdata['gid']]
-                    mresults.append(hpx.command.MetadataResult(data=mdata, status=False, reason=gdata['error']))
+                    mquery = mquery_map[gdata['gid']]
+                    mresults.append(hpx.command.MetadataResult(query=mquery, status=False, reason=gdata['error']))
                 else:
-                    mdata = mdata_map[(gdata['gid'], gdata['token'])]
+                    mquery = mquery_map[(gdata['gid'], gdata['token'])]
                     urls_to_apply = []
                     if PLUGIN_CONFIG.get('add_gallery_url', True):
-                        urls_to_apply.append(mdata.data['gallery_url'])
-                    fdata = format_metadata(gdata, mdata.metadataitem.item, urls_to_apply=urls_to_apply)
-                    applied = apply_metadata(fdata, mdata.metadataitem.item, mdata.options)
-                    mresults.append(hpx.command.MetadataResult(data=mdata, status=applied, reason="No data was applied" if not applied else ""))
+                        urls_to_apply.append(mquery.data['gallery_url'])
+                    fdata = format_metadata(gdata, mquery.metadataitem.item_id, urls_to_apply=urls_to_apply)
+                    item_data = apply_metadata(fdata, mquery.metadataitem.item_id, mquery.options)
+                    mresults.append(hpx.command.MetadataResult(
+                        query=mquery,
+                        data=item_data,
+                        status=item_data.is_dirty(),
+                        reason="No data was applied" if not item_data.is_dirty() else ""
+                        )
+                        )
 
         elif response:
             log.warning(response)
-            for d in datatuple:
-                mresults.append(hpx.command.MetadataResult(data=d, status=False, reason=response['error']))
+            for q in querytuple:
+                mresults.append(hpx.command.MetadataResult(query=q, status=False, reason=response['error']))
 
     return tuple(mresults)
 
@@ -391,7 +398,7 @@ def capitalize_text( text ):
     return " ".join(x.capitalize() for x in text.strip().split())
 
 
-def format_metadata( gdata, item, urls_to_apply=None ):
+def format_metadata( gdata, item_id, urls_to_apply=None ):
     """
     Formats metadata to look like this for apply_metadata:
     data = {
@@ -405,21 +412,21 @@ def format_metadata( gdata, item, urls_to_apply=None ):
         'urls': None # [url, ...]
     }
     """
-    mdata = { }
+    extracted_data = { }
 
-    mdata['titles'] = []
+    extracted_data['titles'] = []
 
-    parsed_text = hpx.command.ItemTextParser(gdata['title'])
+    parsed_text = happypanda.core.commands.import_cmd.ItemTextParser(gdata['title'])
 
     parsed_title = parsed_text.extract_title()
     if parsed_title:
         parsed_title = parsed_title[0]
-    mdata['titles'].append((parsed_title or gdata['title'], 'english'))
+    extracted_data['titles'].append((parsed_title or gdata['title'], 'english'))
 
-    mdata['titles'].append((gdata['title_jpn'], 'japanese'))
+    extracted_data['titles'].append((gdata['title_jpn'], 'japanese'))
 
-    mdata['category'] = gdata['category']
-    mdata['pub_date'] = arrow.Arrow.fromtimestamp(gdata['posted'])
+    extracted_data['category'] = gdata['category']
+    extracted_data['pub_date'] = arrow.Arrow.fromtimestamp(gdata['posted'])
 
     lang = "japanese"  # default language
 
@@ -431,7 +438,7 @@ def format_metadata( gdata, item, urls_to_apply=None ):
     parsed_circles = parsed_text.extract_circle()
 
     extranous_namespaces = ("artist", "parody", "group", "language")
-    mdata['tags'] = { }
+    extracted_data['tags'] = { }
     for nstag in gdata['tags']:
 
         blacklist_tags = PLUGIN_CONFIG.get("blacklist_tags")
@@ -464,27 +471,27 @@ def format_metadata( gdata, item, urls_to_apply=None ):
             parodies.add(t)
 
         if not (PLUGIN_CONFIG.get("remove_namespaces") and ns in extranous_namespaces):
-            mdata['tags'].setdefault(ns, []).append(t)
+            extracted_data['tags'].setdefault(ns, []).append(t)
         else:
             log.debug(f"removing namespace {ns}")
 
-    log.debug(f"tags: {mdata['tags']}")
+    log.debug(f"tags: {extracted_data['tags']}")
 
-    mdata['language'] = lang
+    extracted_data['language'] = lang
 
     if parodies:
-        mdata['parodies'] = parodies
+        extracted_data['parodies'] = parodies
 
     if artists:
         a_circles = []
         for a in artists:
             a_circles.append((a, tuple(circles)))  # assign circles to each artist
-        mdata['artists'] = a_circles
+        extracted_data['artists'] = a_circles
 
     if urls_to_apply:
-        mdata['urls'] = urls_to_apply
+        extracted_data['urls'] = urls_to_apply
 
-    return mdata
+    return extracted_data
 
 
 GalleryData = hpx.command.GalleryData
@@ -502,7 +509,7 @@ TagData = hpx.command.TagData
 NamespaceData = hpx.command.NamespaceData
 
 
-def apply_metadata( data, gallery, options ):
+def apply_metadata( data, item_id, options ):
     """
     data = {
         'titles': None, # [(title, language),...]
@@ -518,7 +525,7 @@ def apply_metadata( data, gallery, options ):
 
     log.debug(f"data: {data}")
 
-    gdata = GalleryData()
+    item_data = GalleryData()
 
     if isinstance(data.get('titles'), (list, tuple, set)):
         gtitles = []
@@ -533,7 +540,7 @@ def apply_metadata( data, gallery, options ):
                 gtitles.append(gtitle)
 
         if gtitles:
-            gdata.titles = gtitles
+            item_data.titles = gtitles
             log.debug("applied titles")
 
     if isinstance(data.get('artists'), (list, tuple, set)):
@@ -550,7 +557,7 @@ def apply_metadata( data, gallery, options ):
                     gartist.circles = gcircles
 
         if gartists:
-            gdata.artists = gartists
+            item_data.artists = gartists
             log.debug("applied artists")
 
     if isinstance(data.get('parodies'), (list, tuple, set)):
@@ -561,15 +568,15 @@ def apply_metadata( data, gallery, options ):
                 gparodies.append(gparody)
 
         if gparodies:
-            gdata.parodies = gparodies
+            item_data.parodies = gparodies
             log.debug("applied parodies")
 
     if data.get('category'):
-        gdata.category = CategoryData(name=data['category'])
+        item_data.category = CategoryData(name=data['category'])
         log.debug("applied category")
 
     if data.get('language'):
-        gdata.language = LanguageData(name=data['language'])
+        item_data.language = LanguageData(name=data['language'])
         log.debug("applied language")
 
     if isinstance(data.get('tags'), (dict, list)):
@@ -590,12 +597,12 @@ def apply_metadata( data, gallery, options ):
                     gnstags.append(NamespaceTagData(**kw))
 
         if gnstags:
-            gdata.tags = gnstags
+            item_data.tags = gnstags
             log.debug("applied tags")
 
     if isinstance(data.get('pub_date'), (datetime.datetime, arrow.Arrow)):
         pub_date = data['pub_date']
-        gdata.pub_date = pub_date
+        item_data.pub_date = pub_date
         log.debug("applied pub_date")
 
     if isinstance(data.get('urls'), (list, tuple)):
@@ -604,11 +611,9 @@ def apply_metadata( data, gallery, options ):
             if u:
                 gurls.append(UrlData(name=u))
         if gurls:
-            gdata.urls = gurls
+            item_data.urls = gurls
             log.debug("applied urls")
 
-    applied = happypanda.core.commands.item_cmd.UpdateItemData(gallery, gdata, options=options)
+    log.debug(f"applied: {item_data.is_dirty()}")
 
-    log.debug(f"applied: {applied}")
-
-    return applied
+    return item_data
