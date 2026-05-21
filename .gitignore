@@ -1,4 +1,6 @@
 logs/
+plugins/EHentai*/*
+plugins/NHentai*/*
 
 # Created by https://www.gitignore.io/api/python,pycharm,visualstudio,visualstudiocode
 
